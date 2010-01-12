@@ -14,6 +14,7 @@
 from utils.mojodevice import MojoUpdatingDevice
 from utils.mojomessages import MojoReceivedMessage, MojoSendMessage, MojoAddress
 from utils.mojoconfig import masterAddress
+from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")
@@ -49,10 +50,11 @@ class PRM(MojoUpdatingDevice):
         self.addResponseCallback("Cool", self.coolRespond)
         self.addResponseCallback("Transfer", self.transferRespond)
         self.xposition = 0
-    
+        
     def goMoveXHome(self):
         self.goMoveX()
     
+    @MojoRecorder("MoveX")
     def goMoveX(self, position=0):
         position = str(position)
         cmd = self._findCommand("MoveX")
@@ -60,37 +62,42 @@ class PRM(MojoUpdatingDevice):
         self.send()
         self.sendMsg.clearCommands()
     
+    @MojoRecorder("MoveZ")
     def goMoveZDown(self):
         cmd = self._findCommand("MoveZ")
         self.sendMsg.addCommand(cmd, self.DOWN)
         self.send()
         self.sendMsg.clearCommands()
     
+    @MojoRecorder("MoveZ")
     def goMoveZUp(self):
         cmd = self._findCommand("MoveZ")
         self.sendMsg.addCommand(cmd, self.UP)
         self.send()
         self.sendMsg.clearCommands()
     
+    @MojoRecorder("Transfer")
     def goTransferOn(self):
         cmd = self._findCommand("Transfer")
         self.sendMsg.addCommand(cmd, self.ON)
         self.send()
         self.sendMsg.clearCommands()
     
-    
+    @MojoRecorder("Transfer")
     def goTransferOff(self):
         cmd = self._findCommand("Transfer")
         self.sendMsg.addCommand(cmd, self.OFF)
         self.send()
         self.sendMsg.clearCommands()
     
+    @MojoRecorder("Cool")
     def goCoolOn(self):
         cmd = self._findCommand("Cool")
         self.sendMsg.addCommand(cmd, self.ON)
         self.send()
         self.sendMsg.clearCommands()
     
+    @MojoRecorder("Cool")
     def goCoolOff(self):
         cmd = self._findCommand("Cool")
         self.sendMsg.addCommand(cmd, self.OFF)

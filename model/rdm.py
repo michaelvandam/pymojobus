@@ -12,6 +12,7 @@
 
 from utils.mojodevice import MojoDevice
 from utils.mojoerrors import *
+from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")
@@ -48,14 +49,14 @@ class RDM(MojoDevice):
         self.addResponseCallback("Standby", self.standbyRespond)
         self.addResponseCallback("Deliver", self.deliverRespond)
         
-        
+    @MojoRecorder("Load")
     def goLoad(self, reagentNames=None):
         
         cmd = self._findCommand("Load")
         self.sendMsg.addCommand(cmd, "GO")
         self.send()
         self.sendMsg.clearCommands()
-       
+    
     def loadRespond(self, param):
         
         if param == "TRUE" or param == "DONE" :
@@ -66,7 +67,7 @@ class RDM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
         
-        
+    @MojoRecorder("Standby")
     def goStandby(self, reagentNames=None):
         
         cmd = self._findCommand("Standby")
@@ -85,13 +86,12 @@ class RDM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
             
-        
+    @MojoRecorder("Deliver")
     def goDeliver(self, index):
         cmd = self._findCommand("Deliver")
         self.sendMsg.addCommand(cmd, str(index))
         self.send()
         self.sendMsg.clearCommands()
-        
         
     def deliverRespond(self, param):
 

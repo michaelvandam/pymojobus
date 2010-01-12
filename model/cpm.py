@@ -14,6 +14,7 @@
 from utils.mojodevice import MojoDevice
 #from utils.reagents import Reagent
 from utils.mojoerrors import *
+from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")
@@ -44,7 +45,7 @@ class CPM(MojoDevice):
         self.addResponseCallback("Elute", self.eluteRespond)
         
         
-        
+    @MojoRecorder("LoadReagents")
     def goLoadReagents(self):
         
         cmd = self._findCommand("LoadReagents")
@@ -63,7 +64,7 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
             
-        
+    @MojoRecorder("LoadSample")
     def goLoadSample(self):
         
         cmd = self._findCommand("LoadSample")
@@ -82,6 +83,7 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
 
+    @MojoRecorder("Trap")
     def goTrap(self):
         
         cmd = self._findCommand("Trap")
@@ -99,7 +101,8 @@ class CPM(MojoDevice):
             s = "Device (%s) did not go to trap sample" % str(self)
             errlog.error(s)
             raise MojoCallbackError(s)
-    
+
+    @MojoRecorder("Wash")
     def goWash(self):
         
         cmd = self._findCommand("Wash")
@@ -117,7 +120,8 @@ class CPM(MojoDevice):
             s = "Device (%s) did not go to wash" % str(self)
             errlog.error(s)
             raise MojoCallbackError(s)
-        
+    
+    @MojoRecorder("Elute")
     def goElute(self):
         
         cmd = self._findCommand("Elute")
@@ -136,6 +140,7 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
     
+    @MojoRecorder("Standby")
     def goStandby(self, reagentNames=None):
         
         cmd = self._findCommand("Standby")
