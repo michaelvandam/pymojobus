@@ -10,3 +10,4 @@ class MojoThread(Thread):
         
     def stop(self):
         self.stop_event.set()
+        self.join()

@@ -16,12 +16,14 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from view.mainview import MainWindow
 from mojo import mojo
+from utils.mojorecorder import turnRecordingOn
 
 def main():
     app = QApplication(sys.argv)
     app.setOrganizationName("UCLA Pharmacology")
     app.setOrganizationDomain("mednet.ucla.edu")
     app.setApplicationName("ARC-P Modular Chemistry System")
+    turnRecordingOn()
     form = MainWindow(mojo=mojo, config=mojo.config)
     form.show()
     app.exec_() 

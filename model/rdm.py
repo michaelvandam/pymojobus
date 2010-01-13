@@ -36,7 +36,7 @@ class RDM(MojoDevice):
     LOAD = "Loading..."
     DELIVER = "Delivering "
     STANDBY = "Standby"
-    
+    GO = "GO"
     
     def __init__(self, *args, **kwargs):
         super(RDM,self).__init__(*args,**kwargs)
@@ -49,14 +49,9 @@ class RDM(MojoDevice):
         self.addResponseCallback("Standby", self.standbyRespond)
         self.addResponseCallback("Deliver", self.deliverRespond)
         
-    @MojoRecorder("Load")
     def goLoad(self, reagentNames=None):
+        self.goCommand("Load", self.GO)
         
-        cmd = self._findCommand("Load")
-        self.sendMsg.addCommand(cmd, "GO")
-        self.send()
-        self.sendMsg.clearCommands()
-    
     def loadRespond(self, param):
         
         if param == "TRUE" or param == "DONE" :
@@ -67,13 +62,8 @@ class RDM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
         
-    @MojoRecorder("Standby")
-    def goStandby(self, reagentNames=None):
-        
-        cmd = self._findCommand("Standby")
-        self.sendMsg.addCommand(cmd, "GO")
-        self.send()
-        self.sendMsg.clearCommands()
+    def goStandby(self):
+        self.goCommand("Standby", self.GO)
         
         
     def standbyRespond(self,param):
@@ -86,15 +76,10 @@ class RDM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
             
-    @MojoRecorder("Deliver")
     def goDeliver(self, index):
-        cmd = self._findCommand("Deliver")
-        self.sendMsg.addCommand(cmd, str(index))
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Deliver", str(index))
         
     def deliverRespond(self, param):
-
         try:
             index = int(param)-1
             self.state=self.DELIVER #+ str(index + 1)

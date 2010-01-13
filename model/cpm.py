@@ -14,7 +14,6 @@
 from utils.mojodevice import MojoDevice
 #from utils.reagents import Reagent
 from utils.mojoerrors import *
-from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")
@@ -29,6 +28,7 @@ class CPM(MojoDevice):
     WASH = "Washing..."
     ELUTE = "Eluting..."
     STANDBY = "Standby"
+    GO = "GO"
     
     
     
@@ -45,13 +45,8 @@ class CPM(MojoDevice):
         self.addResponseCallback("Elute", self.eluteRespond)
         
         
-    @MojoRecorder("LoadReagents")
     def goLoadReagents(self):
-        
-        cmd = self._findCommand("LoadReagents")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("LoadReagents", self.GO)
         
         
     def loadReagentsRespond(self,param):
@@ -64,14 +59,8 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
             
-    @MojoRecorder("LoadSample")
     def goLoadSample(self):
-        
-        cmd = self._findCommand("LoadSample")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
-        
+        self.goCommand("LoadSample", self.GO)
         
     def loadSampleRespond(self,param):
         
@@ -83,13 +72,8 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
 
-    @MojoRecorder("Trap")
     def goTrap(self):
-        
-        cmd = self._findCommand("Trap")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Trap", self.GO)
         
         
     def trapRespond(self,param):
@@ -102,14 +86,8 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
 
-    @MojoRecorder("Wash")
     def goWash(self):
-        
-        cmd = self._findCommand("Wash")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
-        
+        self.goCommand("Wash", self.GO)
         
     def washRespond(self,param):
         
@@ -121,17 +99,11 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
     
-    @MojoRecorder("Elute")
     def goElute(self):
-        
-        cmd = self._findCommand("Elute")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Elute", self.GO)
         
         
     def eluteRespond(self,param):
-        
         if param == "DONE":
             self.state = self.ELUTE
             log.debug("%s Going to elute" % str(self))
@@ -140,14 +112,8 @@ class CPM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
     
-    @MojoRecorder("Standby")
     def goStandby(self, reagentNames=None):
-        
-        cmd = self._findCommand("Standby")
-        self.sendMsg.addCommand(cmd)
-        self.send()
-        self.sendMsg.clearCommands()
-        
+        self.goCommand("Standby", self.GO)
         
     def standbyRespond(self,param):
         

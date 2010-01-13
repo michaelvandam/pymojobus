@@ -37,8 +37,8 @@ class PRM(MojoUpdatingDevice):
     def __init__(self, *args, **kwargs):
         MojoUpdatingDevice.__init__(self, *args, **kwargs)
         updateMsg = MojoSendMessage(MojoAddress(sender=masterAddress, receiver=self.address))
-        updateMsg.addCommand(self._findCommand("MoveX"))
-        updateMsg.addCommand(self._findCommand("MoveZ"))
+        updateMsg.addCommand(self.findCommand("MoveX"))
+        updateMsg.addCommand(self.findCommand("MoveZ"))
         self.updateMsgs.append(updateMsg)
         self.startUpdating()
         self.xState = self.BUSY
@@ -54,55 +54,27 @@ class PRM(MojoUpdatingDevice):
     def goMoveXHome(self):
         self.goMoveX()
     
-    @MojoRecorder("MoveX")
     def goMoveX(self, position=0):
         position = str(position)
-        cmd = self._findCommand("MoveX")
-        self.sendMsg.addCommand(cmd, position)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("MoveX", position)
     
-    @MojoRecorder("MoveZ")
     def goMoveZDown(self):
-        cmd = self._findCommand("MoveZ")
-        self.sendMsg.addCommand(cmd, self.DOWN)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("MoveZ", self.DOWN)
     
-    @MojoRecorder("MoveZ")
     def goMoveZUp(self):
-        cmd = self._findCommand("MoveZ")
-        self.sendMsg.addCommand(cmd, self.UP)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("MoveZ", self.UP)
     
-    @MojoRecorder("Transfer")
     def goTransferOn(self):
-        cmd = self._findCommand("Transfer")
-        self.sendMsg.addCommand(cmd, self.ON)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Transfer", self.ON)
     
-    @MojoRecorder("Transfer")
     def goTransferOff(self):
-        cmd = self._findCommand("Transfer")
-        self.sendMsg.addCommand(cmd, self.OFF)
-        self.send()
-        self.sendMsg.clearCommands()
-    
-    @MojoRecorder("Cool")
+        self.goCommand("Transfer", self.OFF)
+
     def goCoolOn(self):
-        cmd = self._findCommand("Cool")
-        self.sendMsg.addCommand(cmd, self.ON)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Cool", self.ON)
     
-    @MojoRecorder("Cool")
     def goCoolOff(self):
-        cmd = self._findCommand("Cool")
-        self.sendMsg.addCommand(cmd, self.OFF)
-        self.send()
-        self.sendMsg.clearCommands()
+        self.goCommand("Cool", self.OFF)
     
     def moveXRespond(self,param):
         
