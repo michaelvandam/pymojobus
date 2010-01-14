@@ -1,13 +1,12 @@
 import time
 import logging
-import model.experiment
+import model.sequence
 from threading import Event
-from model.experiment import Session
-from model.experiment.commandmessage import CommandMessage
+from model.sequence.sequences import sequences
+from model.sequence.commandmessage import CommandMessage
+
 
 RECORDING = Event()
-
-
 
 log = logging.getLogger()
 recorderLog = logging.getLogger("mojo.recorder")
@@ -26,7 +25,8 @@ def MojoRecorder(fxn):
             global RECORDING
             if RECORDING.isSet():
                 cmdmsg = CommandMessage(command, param, self.deviceType, self.address)
-                session = Session()
+                session = sequences.Session()
+                cmdmsg.setDuration(session)
                 session.add(cmdmsg)
                 session.commit()
                 recorderLog.info("Command: %s" % command)
@@ -34,6 +34,7 @@ def MojoRecorder(fxn):
                 recorderLog.info("Device: %s" % self)
                 recorderLog.info("Address: %s" % self.address)
                 recorderLog.info("Type: %s" % self.deviceType)
+                
                 
             return fxn(self, command, param)
         return new

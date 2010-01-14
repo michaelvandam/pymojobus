@@ -1,9 +1,8 @@
 import time
-
-from model import experiment
-from model.experiment.commandmessage import CommandMessage
-from model.experiment import Session
-
+import operator
+from model import sequence
+from model.sequence.commandmessage import CommandMessage
+from model.sequence.sequences import sequences
 from model import deviceTypes
 from utils.mojoconn import ConnectionFactory
 from utils.mojoconfig import config
@@ -14,9 +13,13 @@ from view import deviceViewTypes
 from utils.mojorecorder import turnRecordingOn
 from utils.mojorecorder import turnRecordingOff
 
+
 log = mojologger.logging.getLogger()
 
 log.info("*BEGIN MOJO*")
+
+def toSeconds(td):
+    return td.seconds+td.days*24*60*60+td.microseconds/1000000.
 
 class Mojo(object):
     def __init__(self,config=config):
@@ -60,24 +63,27 @@ def playBack(mojo):
         except AttributeError:
             pass
         
-    session = Session()
-    for cmd in session.query(CommandMessage).all():
-        import pdb
-        #pdb.set_trace()
+    session = sequences.Session()
+    cmds = session.query(CommandMessage).all()
+    cmds.sort(key=operator.attrgetter("created"))
+    
+    start = toSeconds(cmds[0].duration)
+    
+    for cmd in cmds:
+        print cmd.created, cmd.duration
+        print "Sleeping %s " % toSeconds(cmd.duration)
+        time.sleep(toSeconds(cmd.duration))
         mojo.devices[cmd.deviceAddress].goCommand(cmd.command, str(cmd.param))
-        #time.sleep(1)
-    #for device in mojo.devices:
-    #    try:
-    #        device.startUpdating()
-    #    except AttributeError:
-    #        pass
 
 def main():
     pass
 
 if __name__=='__main__':
+    
     config['SerialSettings']['port']=9
     mojo.makeConnection(config)
     time.sleep(2)
     mojo.getDevices()
+    import pdb
+    pdb.set_trace()
     playBack(mojo)
