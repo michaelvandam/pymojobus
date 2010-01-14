@@ -10,10 +10,10 @@ from view import deviceViewTypes
 
 log = mojologger.logging.getLogger()
 
-log.info("*BEGIN MOJO*")
 
 class Mojo(object):
-    def __init__(self,config=config):
+    def __init__(self,config=config):        
+        log.info("*BEGIN MOJO*")
         self.conn = None
         self.deviceFactory=None
         self.devices=None
@@ -43,12 +43,19 @@ class Mojo(object):
     def stopMonitor(self):
         self.conn.stopMonitor()
 
-mojo = Mojo()
+    def stopDeviceUpdating(self):
+        for device in self.devices.values():
+            try:
+                device.stopUpdating()
+            except AttributeError:
+                pass
+            
     
 def main():
     pass
 
 if __name__=='__main__':
+    mojo=Mojo()
     config['SerialSettings']['port']=9
     mojo.makeConnection(config)
     time.sleep(2)

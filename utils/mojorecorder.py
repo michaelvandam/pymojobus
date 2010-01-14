@@ -3,7 +3,7 @@ import logging
 import model.sequence
 from threading import Event
 from model.sequence.sequences import sequences
-from model.sequence.commandmessage import CommandMessage
+from model.sequence.dbmodel import CommandMessage
 
 
 RECORDING = Event()
