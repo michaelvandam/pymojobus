@@ -3,8 +3,11 @@
 import setupdb
 from setupdb import generateEngine, generateSession
 from utils.mojoconfig import config
+from dbmodel import Sequence
 import tempfile
 import os
+
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 defaultdb = config['Sequence']['file']
 
@@ -14,7 +17,6 @@ class Sequences(object):
         if openPrevious==True:
             if os.path.exists(defaultdb):
                 self.filepath = defaultdb
-                print "Should not run"
             else:
                 self.generateNewDbName()
         else:
@@ -23,6 +25,7 @@ class Sequences(object):
         
         self.engine = generateEngine(self.filepath)
         self.Session = generateSession(self.engine)
+        self.loadDb()
         
     
     def generateNewDbName(self):
@@ -30,14 +33,80 @@ class Sequences(object):
         config['Sequence']['file'] = self.filepath
         config.write()
     
-    def loadDb(self, filepath):
+    def createOrLoadLastSequence(self):
+        sess = self.Session()
+        lastSequenceName = config['Sequence']['lastsequence']
+        sess = self.Session()
+        q = sess.query(Sequence).filter(Sequence.name == lastSequenceName)
+        try:
+            self._selectedSequence = q.one()
+            print self._selectedSequence.name
+            config['Sequence']['lastsequence'] = self._selectedSequence.name
+            config.write()
+            
+        except (MultipleResultsFound, NoResultFound):
+            self.createDefaultSequence()
+    
+    def createDefaultSequence(self):
+        sess = self.Session()
+        defaultSequenceName = config['Sequence']['defaultname']
+        sess = self.Session()
+        q = sess.query(Sequence).filter(Sequence.name == defaultSequenceName)
+        try:
+            self._selectedSequence = q.one()
+            self.loadSequence(self._selectedSequence.name)
+            
+            config['Sequence']['lastsequence'] = self._selectedSequence.name
+            config.write()
+            
+        except (MultipleResultsFound, NoResultFound):
+            self.createAndLoadSequence(defaultSequenceName)
+    
+    def createAndLoadSequence(self, sequenceName, authorName = config['Sequence']['defaultauthor']):
+        sess = self.Session()
+        self._selectedSequence = Sequence(sequenceName, authorName)
+        sess.add(self._selectedSequence)
+        sess.commit()
+        config['Sequence']['lastsequence'] = self._selectedSequence.name
+        config.write()
+    
+    def loadSequence(self, sequenceName):
+        sess = self.Session()
+        q = sess.query(Sequence).filter(Sequence.name == sequenceName)
+        try:
+            self._selectedSequence = q.one()
+            config['Sequence']['lastsequence'] = self._selectedSequence.name
+            config.write()
+            
+        except (MultipleResultsFound, NoResultFound):
+            self.createOrLoadLastSequence()
+        
+        
+    
+    def getSelectedSequence(self, sess):
+        return sess.query(Sequence).filter(Sequence.id == self._selectedSequence.id).one()
+    
+
+    def loadDb(self, filepath = config['Sequence']['file']):
         sess = self.Session()
         sess.close_all()
         self.engine.dispose()
         self.engine = generateEngine(filepath)
         self.Session = generateSession(self.engine)
         config['Sequence']['file'] = filepath
+        self.filepath = filepath
+        self.createOrLoadLastSequence()
         config.write()
+    
+    def deleteSelectedSequence(self):
+        sess = self.Session()
+        seq = self.getSelectedSequence(sess)
+        seq.visible=False
+        sess.commit()
+        
+    def getSequences(self, sess):
+        return sess.query(Sequence).filter(Sequence.visible==True).all()
+        
     
 sequences = Sequences()
 

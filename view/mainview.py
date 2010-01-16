@@ -5,6 +5,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import qrc_resources
 from connectionview import SerialConnectionView
+from sqlalchemy.exc import IntegrityError
 
 class DeviceWidgetItem(QListWidgetItem):
 
@@ -46,10 +47,11 @@ class TabbedDeviceWidget(QTabWidget):
     
 class MainWindow(QMainWindow):
     
-    def __init__(self, mojo=None, config=None, parent=None):
+    def __init__(self, mojo=None, sequences=None, config=None, parent=None):
         super(MainWindow,self).__init__(parent)
         self.config=config
         self.mojo = mojo
+        self.sequences = sequences
         self.dockWidget = QDockWidget("Devices", self)
         self.dockWidget.setObjectName("DeviceDock")
         self.dockWidget.setAllowedAreas(Qt.LeftDockWidgetArea|Qt.RightDockWidgetArea)
@@ -67,9 +69,9 @@ class MainWindow(QMainWindow):
         status.addPermanentWidget(self.selectedModuleName)
         self.setWindowTitle("ARC-P Modular Chemistry System")
         
-        fileNewAction = self.createAction("&New", None, "Ctrl+N", None, "Create a new experiment")
-        fileSaveAction = self.createAction("&Save", None, "Ctrl+S", None, "Save current experiment")
-        fileSaveAsAction = self.createAction("S&ave As", None, None, None, "Save experiment as ...")
+        fileNewAction = self.createAction("&New", None, "Ctrl+N", None, "Create a new sequence database")
+        fileSaveAsAction = self.createAction("S&ave database As", None, None, None, "Save sequence database as ...")
+        openAction  = self.createAction("Open database", self.opendb, None, None, "Open sequence database...")
         fileQuitAction = self.createAction("&Quit", self.close, "Ctrl+Q", None, "Close the Application")
         moduleSearchAction = self.createAction("Sear&ch", self.searchForDevices, "Ctrl+H", None, "Search for devices")
         moduleClearAction = self.createAction("C&lear", self.clearDevices, "Ctrl+L", None, "Clear Modules")
@@ -80,22 +82,64 @@ class MainWindow(QMainWindow):
         connectionDisconnectAction = self.createAction("&Disconnect", self.disconnectSerial, None, None, "Disconnect")
         helpAboutAction = self.createAction("A&bout", self.helpAbout, "Ctrl+~", None, "About ...")
         helpHelpAction = self.createAction("&Help", None, "Ctrl+?", None, "Help ...")
+        self.sequenceCreateAction = self.createAction("&Create New Sequence", self.createSequence, "Ctrl+S", None, "Create New Sequence")
+        self.sequenceDeleteAction = self.createAction("&Delete Selected Sequence", self.deleteSequence, "Ctrl+D", None, "Delete Active Sequence")
         
         
         fileMenu = self.menuBar().addMenu("&File")
         moduleMenu = self.menuBar().addMenu("&Module")
+        self.sequenceMenu = self.menuBar().addMenu("&Sequence")
         viewMenu = self.menuBar().addMenu("&View")
         connectionMenu = self.menuBar().addMenu("&Connection")
         helpMenu = self.menuBar().addMenu("&Help")
         
-        self.addActions(fileMenu, (fileNewAction, fileSaveAction, fileSaveAsAction, fileQuitAction))
+        self.addActions(fileMenu, (fileNewAction, openAction, fileSaveAsAction, fileQuitAction))
         self.addActions(moduleMenu, (moduleSearchAction, moduleClearAction))
         self.addActions(viewMenu, (viewDeviceList,))
         self.addActions(connectionMenu, (connectionSetupAction, connectionConnectAction, connectionDisconnectAction))
         self.addActions(helpMenu,(helpAboutAction, helpHelpAction))
         
+        self.connect(self.sequenceMenu, SIGNAL("aboutToShow()"), self.updateSequenceMenu)
         self.connect(self.deviceList, SIGNAL("clicked(QModelIndex)"), self.selectModule)
         
+    
+    def updateSequenceMenu(self):
+        self.sequenceMenu.clear()
+        self.sequenceMenu.addAction(self.sequenceCreateAction)
+        self.sequenceMenu.addAction(self.sequenceDeleteAction)
+        self.sequenceMenu.addSeparator()
+        sess = self.sequences.Session()
+        seqs = self.sequences.getSequences(sess)
+        for seq in seqs:
+            action = self.createAction(seq.name, None, None , None, "Select sequence %s" % seq.name)
+            action.setCheckable(True)
+            if seq == self.sequences.getSelectedSequence(sess):
+                action.setChecked(True)
+            action.setData(QVariant(seq.name))
+            self.connect(action, SIGNAL("triggered()"), self.loadSequence)
+            self.sequenceMenu.addAction(action)
+            
+    def createSequence(self):
+        title = "Add Sequence"
+        while(True):
+            string, ok = QInputDialog.getText(self, title, title)
+            try:
+                self.sequences.createAndLoadSequence(unicode(string))
+                break
+            except IntegrityError:
+                QMessageBox.warning(self, "Integrity Error",
+                          """Sequence name already exists, please choose another.""")
+                
+        
+    def deleteSequence(self):
+        self.sequences.deleteSelectedSequence()
+    
+    def loadSequence(self, seqName=None):
+        if seqName is None:
+            action = self.sender()
+            if isinstance(action,QAction):
+                seqName = unicode(action.data().toString())
+                self.sequences.loadSequence(seqName)
     
     def addActions(self, target, actions):
         for action in actions:
@@ -125,6 +169,17 @@ class MainWindow(QMainWindow):
                           <p> Copyright &copy; 2009 UC Regents
                           All Rights Reserved.
                           """)
+    
+    def opendb(self):
+        dbfilepath = self.sequences.filepath
+        abspath = os.path.abspath(dbfilepath)
+        basename = os.path.basename(dbfilepath)
+        dirname = os.path.dirname(dbfilepath)
+        formats = ['*.db', '*.seq']
+        fname = unicode(QFileDialog.getOpenFileName(self, "ARC-P - Open File", dirname, "Sequence Files (%s)" % " ".join(formats)))
+        QMessageBox.about(self, "About ARC-P System",
+                          """File Name %s""" % fname)
+        self.sequences.loadDb(fname)
 
     def selectModule(self):
         selecteDeviceWidgetItem = self.sender().currentItem()

@@ -15,7 +15,8 @@ import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from view.mainview import MainWindow
-from mojo import mojo
+from mojo import Mojo
+from model.sequence.sequences import sequences
 from utils.mojorecorder import turnRecordingOn
 
 def main():
@@ -24,7 +25,8 @@ def main():
     app.setOrganizationDomain("mednet.ucla.edu")
     app.setApplicationName("ARC-P Modular Chemistry System")
     turnRecordingOn()
-    form = MainWindow(mojo=mojo, config=mojo.config)
+    mojo = Mojo()
+    form = MainWindow(mojo=mojo, sequences=sequences, config=mojo.config)
     form.show()
     app.exec_() 
     return form

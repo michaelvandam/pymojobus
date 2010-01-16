@@ -1,10 +1,32 @@
-from sqlalchemy import Table, Column, Integer, String,\
+from sqlalchemy import Table, Column, Integer, String, Boolean, \
                         DateTime, PickleType, MetaData, ForeignKey
 from sqlalchemy import asc, desc
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relation, backref
+
 import datetime
 
 Base = declarative_base()
+
+class Sequence(Base):
+    __tablename__= 'sequences'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    author = Column(String)
+    created = Column(DateTime, default=datetime.datetime.now)
+    updated = Column(DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)
+    requiredDevices = Column(PickleType)
+    visible = Column(Boolean, default=True)
+    
+    def __init__(self, name, author):
+        self.name=name
+        self.author = author
+
+    def __repr__(self):
+        return "<Sequence('%s','%s')>" % (self.name, self.author)
+
+
 
 class CommandMessage(Base):
     __tablename__= 'cmdmessages'
@@ -15,8 +37,11 @@ class CommandMessage(Base):
     deviceAddress = Column(String)
     param = Column(PickleType)
     created = Column(DateTime, default=datetime.datetime.now)
-    updated = Column(DateTime, onupdate=datetime.datetime.now)
+    updated = Column(DateTime, onupdate=datetime.datetime.now, default=datetime.datetime.now)
     duration = Column(PickleType)
+    sequence_id = Column(Integer, ForeignKey("sequences.id"))
+    sequence = relation(Sequence, backref=backref("sequences", order_by=id))
+    
     
     def __init__(self, command, param, deviceType, deviceAddress):
         self.command=command
@@ -50,19 +75,3 @@ class CommandMessage(Base):
 
     delay = property(fget=durationInSeconds)
 
-class Sequence(Base):
-    __tablename__= 'sequences'
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    author = Column(String)
-    created = Column(DateTime, default=datetime.datetime.now)
-    updated = Column(DateTime, onupdate=datetime.datetime.now)
-    requiredDevices = Column(PickleType)
-    
-    def __init__(self, name, author):
-        self.name=name
-        self.author = author
-
-    def __repr__(self):
-        return "<Sequence('%s','%s')>" % (self.name, self.author)
