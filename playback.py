@@ -23,17 +23,22 @@ log.info("*BEGIN MOJO PLAYBACK*")
 def playBack(mojo):
     turnRecordingOff()
     mojo.stopDeviceUpdating()
-    
-    session = sequences.Session()
-    cmds = session.query(CommandMessage).order_by(asc(CommandMessage.created)).all()
+    cmds = sequences.getCommandsInSequence()
+    print cmds
     #cmds.sort(key=operator.attrgetter("created"))
-    
+    previouscmd = None
     for cmd in cmds:
-        print cmd.created, cmd.delay
+        if not previouscmd is None:
+            print cmd.created
+            print previouscmd.created
+            delay = cmd.getDurationInSeconds(previouscmd)
+        else:
+            delay = 0
         mojo.devices[cmd.deviceAddress].goCommand(cmd.command, str(cmd.param))
         print cmd
-        print "Sleeping %s " % cmd.delay
-        time.sleep(cmd.delay)
+        print "Sleeping %s " % delay
+        time.sleep(delay)
+        previouscmd = cmd
 
 def main():
     pass

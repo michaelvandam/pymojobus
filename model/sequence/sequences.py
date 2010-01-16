@@ -3,11 +3,12 @@
 import setupdb
 from setupdb import generateEngine, generateSession
 from utils.mojoconfig import config
-from dbmodel import Sequence
+from dbmodel import Sequence, CommandMessage
 import tempfile
 import os
 
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy import desc, asc
 
 defaultdb = config['Sequence']['file']
 
@@ -106,7 +107,11 @@ class Sequences(object):
         
     def getSequences(self, sess):
         return sess.query(Sequence).filter(Sequence.visible==True).all()
-        
+    
+    def getCommandsInSequence(self):
+        sess = self.Session()
+        seq = self.getSelectedSequence(sess)
+        return seq.commands
     
 sequences = Sequences()
 

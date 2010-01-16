@@ -27,7 +27,6 @@ def MojoRecorder(fxn):
                 session = sequences.Session()
                 cmdmsg = CommandMessage(command, param, self.deviceType, self.address)
                 cmdmsg.sequence = sequences.getSelectedSequence(session)
-                cmdmsg.setDuration(session)
                 session.add(cmdmsg)
                 session.commit()
                 recorderLog.info("Command: %s" % command)

@@ -40,7 +40,7 @@ class CommandMessage(Base):
     updated = Column(DateTime, onupdate=datetime.datetime.now, default=datetime.datetime.now)
     duration = Column(PickleType)
     sequence_id = Column(Integer, ForeignKey("sequences.id"))
-    sequence = relation(Sequence, backref=backref("sequences", order_by=id))
+    sequence = relation(Sequence, backref=backref("commands", order_by=id))
     
     
     def __init__(self, command, param, deviceType, deviceAddress):
@@ -69,9 +69,12 @@ class CommandMessage(Base):
         
         self.duration = datetime.timedelta(0)
         sess.commit()
-
-    def durationInSeconds(self):
+        
+    def getDelay(self, other):
+        self.duration = self.created - other.created
+        
+    def getDurationInSeconds(self, other):
+        self.getDelay(other)
         return self.duration.seconds+self.duration.days*24*60*60+self.duration.microseconds/1000000.
 
-    delay = property(fget=durationInSeconds)
 
