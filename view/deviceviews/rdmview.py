@@ -31,8 +31,9 @@ class RDMView(DeviceView):
         self.reservoirs = [Reservoir(i) for i in range(NUMOFRESERVOIRS)]
 
         self.reservoirButtons = [ReservoirButton(res) for res in self.reservoirs]
+        self.reservoirCleanButtons = [ReservoirButton(res) for res in self.reservoirs]
         
-        self.buttons = [] + self.reservoirButtons
+        self.buttons = [] + self.reservoirButtons + self.reservoirCleanButtons
         #self.buttonGroup = QButtonGroup()
         #self.buttonGroup.setExclusive(True)
         
@@ -45,6 +46,15 @@ class RDMView(DeviceView):
             #self.buttonGroup.addButton(r)
         deliverGroup.setLayout(deliverLayout)
         
+        #Clean Buttons
+        self.cleanGroup = QGroupBox("Clean")
+        cleanLayout = QHBoxLayout()
+        for r in self.reservoirCleanButtons :
+            cleanLayout.addWidget(r)
+            self.connect(r, SIGNAL("clicked()"), self.runClean)
+            #self.buttonGroup.addButton(r)
+        self.cleanGroup.setLayout(cleanLayout)
+        self.cleanGroup.setDisabled(True)
         #Load And Done Buttons
         operationGroup = QGroupBox("")
         operationLayout = QHBoxLayout()
@@ -63,15 +73,38 @@ class RDMView(DeviceView):
         operationGroup.setLayout(operationLayout)
         
         
+        onWasteLabel = QLabel("On")
+        offWasteLabel = QLabel("Off")
+        wasteOnOffGroup = QGroupBox("Waste")
+        wasteOnOffLayout = QHBoxLayout()
+        wasteOnOffGroup.setLayout(wasteOnOffLayout)
+        self.wasteOnButton = QRadioButton()
+        self.wasteOffButton = QRadioButton()
+        self.wasteOffButton.setChecked(True)
+        wasteOnOffLayout.addWidget(onWasteLabel)
+        wasteOnOffLayout.addWidget(self.wasteOnButton)
+        wasteOnOffLayout.addWidget(offWasteLabel)
+        wasteOnOffLayout.addWidget(self.wasteOffButton)
+        
         layout = QGridLayout()
         layout.addWidget(deliverGroup, 0, 0)
         layout.addWidget(operationGroup, 1, 0)
+        layout.addWidget(wasteOnOffGroup,2,0)
+        layout.addWidget(self.cleanGroup, 3, 0)
 
 
         self.setLayout(layout)
 
         self.connect(self.loadButton, SIGNAL("clicked()"), self.runLoad)
         self.connect(self.doneButton, SIGNAL("clicked()"), self.runDone)
+        self.connect(self.wasteOnButton, SIGNAL("clicked()"), self.runWasteOn)
+        self.connect(self.wasteOffButton, SIGNAL("clicked()"), self.runWasteOff)
+    
+    def runWasteOn(self):
+        self.model.goWasteOpen()
+    
+    def runWasteOff(self):
+        self.model.goWasteClose()
     
     def runDone(self):
         self.model.goStandby()
@@ -83,18 +116,32 @@ class RDMView(DeviceView):
         rid = self.sender().reservoir.id
         self.model.goDeliver(rid)
         
+    def runClean(self):
+        rid = self.sender().reservoir.id
+        self.model.goClean(rid)
+        
     def updateView(self):
         log.debug("Update view %s" % self.model.name)
         for b in self.buttons:
             b.setDown(False)
         if self.model.state == self.model.STANDBY:
             self.doneButton.setDown(True)
+            self.cleanGroup.setDisabled(False)
         if self.model.state == self.model.LOAD:
             self.loadButton.setDown(True)
+            self.cleanGroup.setDisabled(False)
+        else:
+            self.cleanGroup.setDisabled(True)
+            
         if self.model.state == self.model.DELIVER:
             log.debug("Go deliver view! %s" % self.model.name)
             log.debug("Selected reagent %d" % self.model.selectedReservoir.id)
             self.reservoirButtons[self.model.selectedReservoir.id - 1].setDown(True)
+        
+        if self.model.cleanState==self.model.CLEAN:
+            log.debug("Go clean view! %s" % self.model.name)
+            log.debug("Selected clean reagent %d" % self.model.selectedCleanReservoir.id)
+            self.reservoirCleanButtons[self.model.selectedCleanReservoir.id - 1].setDown(True)
 
 def main(argv):
     pass

@@ -89,15 +89,19 @@ class Sequences(object):
     
 
     def loadDb(self, filepath = config['Sequence']['file']):
-        sess = self.Session()
-        sess.close_all()
-        self.engine.dispose()
+        self.closeDb()
         self.engine = generateEngine(filepath)
         self.Session = generateSession(self.engine)
         config['Sequence']['file'] = filepath
         self.filepath = filepath
         self.createOrLoadLastSequence()
         config.write()
+    
+    def closeDb(self):
+        sess = self.Session()
+        sess.close_all()
+        self.engine.dispose()
+        
     
     def deleteSelectedSequence(self):
         sess = self.Session()

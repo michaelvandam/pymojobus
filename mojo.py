@@ -56,7 +56,6 @@ def main():
 
 if __name__=='__main__':
     mojo=Mojo()
-    config['SerialSettings']['port']=9
     mojo.makeConnection(config)
     time.sleep(2)
     devices = mojo.getDevices()

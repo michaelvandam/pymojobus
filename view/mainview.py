@@ -1,4 +1,5 @@
 import os
+import shutil
 import platform
 import sys
 from PyQt4.QtCore import *
@@ -67,10 +68,13 @@ class MainWindow(QMainWindow):
         self.selectedModuleName = QLabel("None")
         self.selectedModuleName.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
         status.addPermanentWidget(self.selectedModuleName)
-        self.setWindowTitle("ARC-P Modular Chemistry System")
+        if self.sequences:
+            self.setWindowTitle("ARC-P Modular Chemistry System - %s" % os.path.basename(self.sequences.filepath))
+        else:
+            self.setWindowTitle("ARC-P Modular Chemistry System")
         
         fileNewAction = self.createAction("&New", None, "Ctrl+N", None, "Create a new sequence database")
-        fileSaveAsAction = self.createAction("S&ave database As", None, None, None, "Save sequence database as ...")
+        fileSaveAsAction = self.createAction("S&ave database As", self.saveAs, None, None, "Save sequence database as ...")
         openAction  = self.createAction("Open database", self.opendb, None, None, "Open sequence database...")
         fileQuitAction = self.createAction("&Quit", self.close, "Ctrl+Q", None, "Close the Application")
         moduleSearchAction = self.createAction("Sear&ch", self.searchForDevices, "Ctrl+H", None, "Search for devices")
@@ -102,6 +106,7 @@ class MainWindow(QMainWindow):
         self.connect(self.sequenceMenu, SIGNAL("aboutToShow()"), self.updateSequenceMenu)
         self.connect(self.deviceList, SIGNAL("clicked(QModelIndex)"), self.selectModule)
         
+    
     
     def updateSequenceMenu(self):
         self.sequenceMenu.clear()
@@ -140,6 +145,21 @@ class MainWindow(QMainWindow):
             if isinstance(action,QAction):
                 seqName = unicode(action.data().toString())
                 self.sequences.loadSequence(seqName)
+    
+    
+    def saveAs(self):
+        dbfilepath = self.sequences.filepath
+        abspath = os.path.abspath(dbfilepath)
+        basename = os.path.basename(dbfilepath)
+        dirname = os.path.dirname(dbfilepath)
+        formats = ['*.db', '*.seq']
+        fname = None
+        fname = unicode(QFileDialog.getSaveFileName(self, "ARC-P - Save As File", dirname, "Sequence Files (%s)" % " ".join(formats)))
+        if fname:
+            self.sequences.closeDb()
+            shutil.copy(self.sequences.filepath, fname)
+            self.sequences.loadDb(fname)
+        
     
     def addActions(self, target, actions):
         for action in actions:
@@ -180,6 +200,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(self, "About ARC-P System",
                           """File Name %s""" % fname)
         self.sequences.loadDb(fname)
+        self.setWindowTitle("ARC-P Modular Chemistry System - %s" % os.path.basename(self.sequences.filepath))
 
     def selectModule(self):
         selecteDeviceWidgetItem = self.sender().currentItem()
@@ -205,7 +226,6 @@ class MainWindow(QMainWindow):
 
     def searchForDevices(self):
         self.mojo.getDevices()
-        devices = self.mojo.devices.values()
         self.mojo.getDeviceViews()
         self.loadDevices(self.mojo.deviceViews.values())
 

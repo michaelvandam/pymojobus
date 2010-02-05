@@ -25,7 +25,8 @@ class MojoDeviceFactory( object ):
         log.debug("Sending Announce to bus: '%s'" % str(msg).strip())
         self.mojoconn._mojoWrite(msg)
         
-        responses = self.mojoconn.mojoRead(pause=2)
+        time.sleep(config['MojoSettings']['announcedelay'])
+        responses = self.mojoconn.mojoRead(pause=5)
         for response in responses:
             log.debug("Received WHO from bus: '%s'" % str(response).strip())
             self.devices.addDeviceFromAnnc(response, self.mojoconn)

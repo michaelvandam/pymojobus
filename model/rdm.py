@@ -35,19 +35,28 @@ class RDM(MojoDevice):
     
     LOAD = "Loading..."
     DELIVER = "Delivering "
+    CLEAN = "Cleaning "
     STANDBY = "Standby"
     GO = "GO"
+    OPEN = "OPEN"
+    CLOSE = "CLOSE"
+    ERR = "Error"
     
     def __init__(self, *args, **kwargs):
         super(RDM,self).__init__(*args,**kwargs)
         reservoirNum = self.config['DeviceSettings'][self.deviceType]['reservoirNum']
         self.reservoirs = Reservoirs(int(reservoirNum))
         self.state = self.STANDBY
+        self.cleanState = self.STANDBY
         self.selectedReservoir = None
-        
+        self.selectedCleanReservoir = None
+        self.wasteState= self.OPEN
         self.addResponseCallback("Load", self.loadRespond)
         self.addResponseCallback("Standby", self.standbyRespond)
         self.addResponseCallback("Deliver", self.deliverRespond)
+        self.addResponseCallback("Waste", self.wasteRespond)
+        self.addResponseCallback("Clean", self.cleanRespond)
+        
         
     def goLoad(self, reagentNames=None):
         self.goCommand("Load", self.GO)
@@ -56,6 +65,7 @@ class RDM(MojoDevice):
         
         if param == "TRUE" or param == "DONE" :
             self.state = self.LOAD
+            self.cleanState = self.LOAD
             log.debug("%s Going to Load state" % str(self))
         else:
             s = "Device (%s) did not go to load" % str(self)
@@ -79,6 +89,9 @@ class RDM(MojoDevice):
     def goDeliver(self, index):
         self.goCommand("Deliver", str(index))
         
+    def goClean(self, index):
+        self.goCommand("Clean", str(index))
+    
     def deliverRespond(self, param):
         try:
             index = int(param)-1
@@ -92,8 +105,33 @@ class RDM(MojoDevice):
             errlog.error(s)
             raise MojoCallbackError(s)
         
-        
+    
+    def goWasteOpen(self):
+        self.goCommand("Waste", self.OPEN)
 
+    def goWasteClose(self):
+        self.goCommand("Waste", self.CLOSE)
+
+
+    def wasteRespond(self, param):
+        if param in (self.CLOSE, self.OPEN):
+            self.wasteState = param
+        else:
+            self.wasteState = self.ERR
+       
+    def cleanRespond(self, param):
+        try:
+            index = int(param)-1
+            self.cleanState=self.CLEAN #+ str(index + 1)
+            
+            self.selectedCleanReservoir = self.reservoirs[index]
+            log.debug("%s Going to clean state, selected reagent %d" % 
+                            (str(self),self.selectedCleanReservoir.id))
+            
+        except (ValueError, IndexError):
+            s = "%s Not cleaning, invalid reservoir index" % str(self)
+            errlog.error(s)
+            raise MojoCallbackError(s)
        
     def setReagentName(self, reservoirIndex, name):
         self.reservoirs[reservoirIndex].reagentName=name

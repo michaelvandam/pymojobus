@@ -49,11 +49,13 @@ class MojoConnection(serial.Serial):
         time.sleep(pause)
         while(self.inWaiting()):
             s = self.readline(eol=ENDCHAR)
+            print "Response: %s" % s
             try:
                 responses.append(MojoReceivedMessage(s))
             except MojoInvalidMessage,e:
                 errlog.error("Could not parse message(%s): %s" % (e,s))
-                
+        #import pdb
+        #pdb.set_trace()
         return responses
     
     
