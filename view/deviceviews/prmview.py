@@ -85,23 +85,24 @@ class PRMView(DeviceView):
         
         
         
-        ##Stir Controls
-        #stirGroup = QGroupBox("Stir")
-        #stirGroup.setCheckable(True)
-        #stirLayout = QHBoxLayout()
-        #stirGroup.setLayout(stirLayout)
-        #stirDial = QDial()
-        #stirDial.setNotchesVisible(True)
-        #stirDial.setNotchTarget(100)
-        #self.stirSpeedSpinBox = QSpinBox()
-        #self.stirSpeedSpinBox.setSuffix(" RPM")
-        #stirDial.setRange(0,1000)
-        #self.stirSpeedSpinBox.setRange(0,1000)
-        #stirLayout.addWidget(stirDial)
-        #stirLayout.addWidget(self.stirSpeedSpinBox)
-        #self.connect(stirDial, SIGNAL('valueChanged(int)'), self.stirSpeedSpinBox.setValue)
-        #self.connect(self.stirSpeedSpinBox, SIGNAL('valueChanged(int)'), stirDial.setValue)
-        
+        #Stir Controls
+        stirGroup = QGroupBox("Stir")
+        stirGroup.setCheckable(True)
+        stirLayout = QHBoxLayout()
+        stirGroup.setLayout(stirLayout)
+        stirDial = QDial()
+        stirDial.setNotchesVisible(True)
+        stirDial.setNotchTarget(50)
+        self.stirSpeedSpinBox = QSpinBox()
+        self.stirSpeedSpinBox.setSuffix("")
+        stirDial.setRange(0,255)
+        self.stirSpeedSpinBox.setRange(0,255)
+        stirLayout.addWidget(stirDial)
+        stirLayout.addWidget(self.stirSpeedSpinBox)
+        self.connect(stirDial, SIGNAL('valueChanged(int)'), self.stirSpeedSpinBox.setValue)
+        self.connect(self.stirSpeedSpinBox, SIGNAL('valueChanged(int)'), stirDial.setValue)
+        self.stirButton = QPushButton("Set Speed")
+        stirLayout.addWidget(self.stirButton)
         
         #Motion Controls
         motionGroup = QGroupBox("Motion")
@@ -115,8 +116,13 @@ class PRMView(DeviceView):
         #xGroup.setExclusive(True)
         xLayout = QHBoxLayout()
         xGroup.setLayout(xLayout)
+        #rGroup = QGroupBox()
+        #rLayout = QHBoxLayout()
+        #rGroup.setLayout(rLayout)
+        
         motionLayout.addWidget(zGroup)
         motionLayout.addWidget(xGroup)
+        #motionLayout.addWidget(rGroup)
         motionGroup.setLayout(motionLayout)
         layout = QGridLayout()
         
@@ -140,7 +146,7 @@ class PRMView(DeviceView):
         layout.addWidget(motionGroup,0,0)
         layout.addWidget(transferGroup,1,0)
         layout.addWidget(tempGroup,2,0)
-        #layout.addWidget(stirGroup,3,0)
+        layout.addWidget(stirGroup,3,0)
         
         # Motion Buttons
         self.sealButton = QPushButton("Seal")
@@ -160,6 +166,10 @@ class PRMView(DeviceView):
         xLayout.addWidget(self.position2Button)
         xLayout.addWidget(self.position3Button)
         
+        
+        #self.resetButton =QPushButton("Reset")
+        #rLayout.addWidget(self.resetButton)
+        
         self.setLayout(layout)
         
         self.connect(self.position1Button, SIGNAL("clicked()"), self.runMoveXPos1)
@@ -167,11 +177,20 @@ class PRMView(DeviceView):
         self.connect(self.position3Button, SIGNAL("clicked()"), self.runMoveXPos3)
         self.connect(self.openButton, SIGNAL("clicked()"), self.runMoveZDown)
         self.connect(self.sealButton, SIGNAL("clicked()"), self.runMoveZUp)
+        #self.connect(self.resetButton, SIGNAL("clicked()"), self.runReset)
         self.connect(self.transferOnButton, SIGNAL("clicked()"), self.runTransferOn)
         self.connect(self.transferOffButton, SIGNAL("clicked()"), self.runTransferOff)
         self.connect(self.coolOnButton, SIGNAL("clicked()"), self.runCoolOn)
         self.connect(self.coolOffButton, SIGNAL("clicked()"), self.runCoolOff)
+        self.connect(self.stirButton, SIGNAL("clicked()"), self.runStir)
+        
+    #def runReset(self):
+    #    self.model.goReset()
     
+    def runStir(self):
+        speed = int(self.stirSpeedSpinBox.value())
+        self.model.goMix(speed)
+        
     def runCoolOn(self):
         self.model.goCoolOn()
     

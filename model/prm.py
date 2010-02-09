@@ -33,6 +33,7 @@ class PRM(MojoUpdatingDevice):
     ON = "ON"
     OFF = "OFF"
     ERR = "?ERR"
+    GO = "GO"
     
     def __init__(self, *args, **kwargs):
         MojoUpdatingDevice.__init__(self, *args, **kwargs)
@@ -75,6 +76,13 @@ class PRM(MojoUpdatingDevice):
     
     def goCoolOff(self):
         self.goCommand("Cool", self.OFF)
+        
+    def goReset(self):
+        self.goCommand("Reset",None)
+        
+    def goMix(self, speed):
+        s = str(speed)
+        self.goCommand("Mix",s)
     
     def moveXRespond(self,param):
         
@@ -118,7 +126,7 @@ class PRM(MojoUpdatingDevice):
             log.debug("%s Transfer %s" % (str(self), self.transferState))
         else:
             self.transferState=self.ERR
-        
+    
     
     def coolRespond(self, param):
         if param == self.ON:
