@@ -28,7 +28,8 @@ class MojoDevices(dict):
         try:
             #import pdb
             #pdb.set_trace()
-            return deviceTypes[deviceType](address, conn, version)
+            d = deviceTypes[deviceType](address, conn, version)
+            return d
                 
         except NameError:
             #import pdb

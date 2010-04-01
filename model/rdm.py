@@ -37,10 +37,12 @@ class RDM(MojoDevice):
     DELIVER = "Delivering "
     CLEAN = "Cleaning "
     STANDBY = "Standby"
+    PURGE = "Purging"
     GO = "GO"
     OPEN = "OPEN"
     CLOSE = "CLOSE"
     ERR = "Error"
+    ALL = "ALL"
     
     def __init__(self, *args, **kwargs):
         super(RDM,self).__init__(*args,**kwargs)
@@ -57,6 +59,8 @@ class RDM(MojoDevice):
         self.addResponseCallback("Waste", self.wasteRespond)
         self.addResponseCallback("Clean", self.cleanRespond)
         
+    def goPurge(self):
+        self.goCommand("Deliver", "ALL")
         
     def goLoad(self, reagentNames=None):
         self.goCommand("Load", self.GO)
@@ -93,18 +97,21 @@ class RDM(MojoDevice):
         self.goCommand("Clean", str(index))
     
     def deliverRespond(self, param):
-        try:
-            index = int(param)-1
-            self.state=self.DELIVER #+ str(index + 1)
-            self.selectedReservoir = self.reservoirs[index]
-            log.debug("%s Going to deliver state, selected reagent %d" % 
-                            (str(self),self.selectedReservoir.id))
+        if param == self.ALL:
+            self.state = self.PURGE
+        else:
+            try:
+                index = int(param)-1
+                self.state=self.DELIVER #+ str(index + 1)
+                self.selectedReservoir = self.reservoirs[index]
+                log.debug("%s Going to deliver state, selected reagent %d" % 
+                                (str(self),self.selectedReservoir.id))
+                
+            except (ValueError, IndexError):
+                s = "%s Not delivering, invalid reservoir index" % str(self)
+                errlog.error(s)
+                raise MojoCallbackError(s)
             
-        except (ValueError, IndexError):
-            s = "%s Not delivering, invalid reservoir index" % str(self)
-            errlog.error(s)
-            raise MojoCallbackError(s)
-        
     
     def goWasteOpen(self):
         self.goCommand("Waste", self.OPEN)

@@ -86,12 +86,19 @@ class RDMView(DeviceView):
         wasteOnOffLayout.addWidget(offWasteLabel)
         wasteOnOffLayout.addWidget(self.wasteOffButton)
         
+        purgeGroup = QGroupBox("")
+        purgeLayout = QHBoxLayout()
+        self.purgeButton = QPushButton("Purge / Dry")
+        self.buttons.append(self.purgeButton)
+        purgeLayout.addWidget(self.purgeButton)
+        purgeGroup.setLayout(purgeLayout)
+        
         layout = QGridLayout()
         layout.addWidget(deliverGroup, 0, 0)
         layout.addWidget(operationGroup, 1, 0)
         layout.addWidget(wasteOnOffGroup,2,0)
         layout.addWidget(self.cleanGroup, 3, 0)
-
+        layout.addWidget(purgeGroup, 4, 0)
 
         self.setLayout(layout)
 
@@ -99,7 +106,11 @@ class RDMView(DeviceView):
         self.connect(self.doneButton, SIGNAL("clicked()"), self.runDone)
         self.connect(self.wasteOnButton, SIGNAL("clicked()"), self.runWasteOn)
         self.connect(self.wasteOffButton, SIGNAL("clicked()"), self.runWasteOff)
-    
+        self.connect(self.purgeButton, SIGNAL("clicked()"), self.runPurge)
+        
+    def runPurge(self):
+        self.model.goPurge()
+        
     def runWasteOn(self):
         self.model.goWasteOpen()
     
@@ -142,6 +153,11 @@ class RDMView(DeviceView):
             log.debug("Go clean view! %s" % self.model.name)
             log.debug("Selected clean reagent %d" % self.model.selectedCleanReservoir.id)
             self.reservoirCleanButtons[self.model.selectedCleanReservoir.id - 1].setDown(True)
+        
+        if self.model.state == self.model.PURGE:
+            log.debug("Go purge view! %s" % self.model.name)
+            log.debug("Selected reagent ALL")
+            self.purgeButton.setDown(True)
 
 def main(argv):
     pass

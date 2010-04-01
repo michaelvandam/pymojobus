@@ -40,6 +40,7 @@ class PRM(MojoUpdatingDevice):
         updateMsg = MojoSendMessage(MojoAddress(sender=masterAddress, receiver=self.address))
         updateMsg.addCommand(self.findCommand("MoveX"))
         updateMsg.addCommand(self.findCommand("MoveZ"))
+        updateMsg.addCommand(self.findCommand("Temperature"))
         self.updateMsgs.append(updateMsg)
         self.startUpdating()
         self.xState = self.BUSY
@@ -50,8 +51,22 @@ class PRM(MojoUpdatingDevice):
         self.addResponseCallback("MoveZ", self.moveZRespond)
         self.addResponseCallback("Cool", self.coolRespond)
         self.addResponseCallback("Transfer", self.transferRespond)
+        self.addResponseCallback("Temperature", self.tempRespond)
         self.xposition = 0
-        
+        self.reactorTemperature = 0
+        self.reactorSetpoint = 0
+    
+    def goHeaterOn(self):
+        self.goCommand("HeaterControl", self.ON)
+    
+    def goHeaterOff(self):
+        self.goCommand("HeaterControl", self.OFF)
+    
+    def goSetpoint(self, setpoint):
+        self.reactorSetpoint = setpoint
+        val = str(setpoint)
+        self.goCommand("SetPoint", val)
+    
     def goMoveXHome(self):
         self.goMoveX()
     
@@ -137,3 +152,10 @@ class PRM(MojoUpdatingDevice):
             log.debug("%s Cool %s" % (str(self), self.coolState))
         else:
             self.coolState=self.ERR
+    
+    def tempRespond(self,param):
+        try:
+            self.reactorTemperature = float(param)
+            
+        except ValueError:
+            log.error("Invalid temperature" % param)

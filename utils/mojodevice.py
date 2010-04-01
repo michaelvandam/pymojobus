@@ -47,7 +47,10 @@ class MojoDevice(object):
         
     
     def addResponseCallback(self, friendlyCommandName, fxn):
-        self.responseCallbacks[self.findCommand(friendlyCommandName)] = fxn
+        log.debug("Add Callback - Friendly Name - %s " % friendlyCommandName)
+        cmd = self.findCommand(friendlyCommandName)
+        log.debug("Add Callback - Command - %s " % cmd)
+        self.responseCallbacks[cmd] = fxn
         
     
     def findCommand(self, prettyName):
@@ -79,7 +82,7 @@ class MojoDevice(object):
     @MojoRecorder
     def goCommand(self, prettyName, param=None):
         cmd = self.findCommand(prettyName)
-        if param:
+        if not param is None:
             self.sendMsg.addCommand(cmd, param)
         else:
             self.sendMsg.addCommand(cmd)
@@ -112,7 +115,9 @@ class MojoDevice(object):
         if not self.resp==self.lastMessage:
             errlog.info("Response does not match last message")
         for cmd in msg.cmds:
+            log.debug("Process CMD: %s" % cmd)
             f = self.responseCallbacks.get(cmd.cmd[1:],(lambda x: None))
+            log.debug("Function: %s" % f)
             f(cmd.param)
     
     def getDeviceName(self):

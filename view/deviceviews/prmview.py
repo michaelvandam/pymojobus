@@ -16,54 +16,54 @@ class PRMView(DeviceView):
         # Temperature Controls
         tempGroup = QGroupBox("Temperature")
         
-        #tempStatusGroup = QGroupBox("Status")
-        #tempStatusLayout = QGridLayout()
-        #tempStatusGroup.setLayout(tempStatusLayout)
+        tempStatusGroup = QGroupBox("Status")
+        tempStatusLayout = QGridLayout()
+        tempStatusGroup.setLayout(tempStatusLayout)
         tempLayout = QGridLayout()
         tempGroup.setLayout(tempLayout)
-        #heatGroup = QGroupBox("Heat")
-        #heatLayout = QGridLayout()
-        #heatGroup.setLayout(heatLayout)
+        heatGroup = QGroupBox("Heat")
+        heatLayout = QGridLayout()
+        heatGroup.setLayout(heatLayout)
         coolGroup = QGroupBox("Cool")
         coolLayout = QGridLayout()
         coolGroup.setLayout(coolLayout)
-        #tempLayout.addWidget(tempStatusGroup)
-        #tempLayout.addWidget(heatGroup)
+        tempLayout.addWidget(tempStatusGroup)
+        tempLayout.addWidget(heatGroup)
         tempLayout.addWidget(coolGroup)
         tempGroup.setCheckable(True)
         
-        #currentTempLabel = QLabel("Current Temperature:")
-        #self.currentTempLabel = QLabel("25\xB0C")
-        #currentTempLabel.setBuddy(self.currentTempLabel)
-        #tempStatusLayout.addWidget(currentTempLabel, 0, 0)
-        #tempStatusLayout.addWidget(self.currentTempLabel, 0,1)
+        currentTempLabel = QLabel("Current Temperature:")
+        self.currentTempLabel = QLabel("25\xB0C")
+        currentTempLabel.setBuddy(self.currentTempLabel)
+        tempStatusLayout.addWidget(currentTempLabel, 0, 0)
+        tempStatusLayout.addWidget(self.currentTempLabel, 0,1)
         
-        #setPointLayout  = QHBoxLayout()
-        #tempDial = QDial()
-        #tempDial.setNotchesVisible(True)
-        #tempDial.setNotchTarget(20)
-        #self.tempSpinbox = QDoubleSpinBox()
-        #self.tempSpinbox.setRange(25.0,200.0)
-        #tempDial.setRange(25.0,200.0)
-        #self.tempSpinbox.setSingleStep(0.5)
-        #self.tempSpinbox.setSuffix(u"\xB0C")
-        #self.connect(tempDial, SIGNAL('valueChanged(int)'), self.tempSpinbox.setValue)
-        #self.connect(self.tempSpinbox, SIGNAL('valueChanged(int)'), tempDial.setValue)
-        #setPointLayout.addWidget(tempDial)
-        #setPointLayout.addWidget(self.tempSpinbox)
+        setPointLayout  = QHBoxLayout()
+        tempDial = QDial()
+        tempDial.setNotchesVisible(True)
+        tempDial.setNotchTarget(20)
+        self.tempSpinbox = QDoubleSpinBox()
+        self.tempSpinbox.setRange(20.0,250.0)
+        tempDial.setRange(20.0,250.0)
+        self.tempSpinbox.setSingleStep(0.5)
+        self.tempSpinbox.setSuffix(u"\xB0C")
+        self.connect(tempDial, SIGNAL('valueChanged(int)'), self.tempSpinbox.setValue)
+        self.connect(self.tempSpinbox, SIGNAL('valueChanged(int)'), tempDial.setValue)
+        setPointLayout.addWidget(tempDial)
+        setPointLayout.addWidget(self.tempSpinbox)
         
-        #onHeatLabel = QLabel("On")
-        #offHeatLabel = QLabel("Off")
-        #heatOnOffGroup = QGroupBox()
-        #heatOnOffLayout = QHBoxLayout()
-        #heatOnOffGroup.setLayout(heatOnOffLayout)
-        #heatOnButton = QRadioButton()
-        #heatOffButton = QRadioButton()
-        #heatOffButton.setChecked(True)
-        #heatOnOffLayout.addWidget(onHeatLabel)
-        #heatOnOffLayout.addWidget(heatOnButton)
-        #heatOnOffLayout.addWidget(offHeatLabel)
-        #heatOnOffLayout.addWidget(heatOffButton)
+        onHeatLabel = QLabel("On")
+        offHeatLabel = QLabel("Off")
+        heatOnOffGroup = QGroupBox()
+        heatOnOffLayout = QHBoxLayout()
+        heatOnOffGroup.setLayout(heatOnOffLayout)
+        heatOnButton = QRadioButton()
+        heatOffButton = QRadioButton()
+        heatOffButton.setChecked(True)
+        heatOnOffLayout.addWidget(onHeatLabel)
+        heatOnOffLayout.addWidget(heatOnButton)
+        heatOnOffLayout.addWidget(offHeatLabel)
+        heatOnOffLayout.addWidget(heatOffButton)
         
         onCoolLabel = QLabel("On")
         offCoolLabel = QLabel("Off")
@@ -79,8 +79,8 @@ class PRMView(DeviceView):
         coolOnOffLayout.addWidget(self.coolOffButton)
         
         
-        #heatLayout.addLayout(setPointLayout,0,0)
-        #heatLayout.addWidget(heatOnOffGroup,1,0)
+        heatLayout.addLayout(setPointLayout,0,0)
+        heatLayout.addWidget(heatOnOffGroup,1,0)
         coolLayout.addWidget(coolOnOffGroup)
         
         
@@ -167,9 +167,6 @@ class PRMView(DeviceView):
         xLayout.addWidget(self.position3Button)
         
         
-        #self.resetButton =QPushButton("Reset")
-        #rLayout.addWidget(self.resetButton)
-        
         self.setLayout(layout)
         
         self.connect(self.position1Button, SIGNAL("clicked()"), self.runMoveXPos1)
@@ -177,16 +174,26 @@ class PRMView(DeviceView):
         self.connect(self.position3Button, SIGNAL("clicked()"), self.runMoveXPos3)
         self.connect(self.openButton, SIGNAL("clicked()"), self.runMoveZDown)
         self.connect(self.sealButton, SIGNAL("clicked()"), self.runMoveZUp)
-        #self.connect(self.resetButton, SIGNAL("clicked()"), self.runReset)
         self.connect(self.transferOnButton, SIGNAL("clicked()"), self.runTransferOn)
         self.connect(self.transferOffButton, SIGNAL("clicked()"), self.runTransferOff)
         self.connect(self.coolOnButton, SIGNAL("clicked()"), self.runCoolOn)
         self.connect(self.coolOffButton, SIGNAL("clicked()"), self.runCoolOff)
         self.connect(self.stirButton, SIGNAL("clicked()"), self.runStir)
-        
-    #def runReset(self):
-    #    self.model.goReset()
+        self.connect(tempDial, SIGNAL("dialReleased()"), self.setTemp)
+        self.connect(self.tempSpinbox, SIGNAL("valueChanged(int)"), self.setTemp)
+        self.connect(heatOnButton, SIGNAL("clicked()"), self.runHeatOn)
+        self.connect(heatOffButton, SIGNAL("clicked()"), self.runHeatOff)
     
+    def runHeatOn(self):
+        self.model.goHeaterOn()
+    
+    def runHeatOff(self):
+        self.model.goHeaterOff()
+    
+    def setTemp(self):
+        temp = float(self.tempSpinbox.value())
+        self.model.goSetpoint(temp)
+        
     def runStir(self):
         speed = int(self.stirSpeedSpinBox.value())
         self.model.goMix(speed)
@@ -307,6 +314,8 @@ class PRMView(DeviceView):
         elif self.model.zState == self.model.ZERR:
             log.debug("%s Show ZERR" % self.model.name)
 
+        self.currentTempLabel.setText("%2.1f\xB0C" % self.model.reactorTemperature)
+        
 
 def main(argv):
     pass
