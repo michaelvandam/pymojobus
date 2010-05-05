@@ -29,7 +29,10 @@ msglog = logging.getLogger("mojo.message")
 errlog = logging.getLogger("mojo.error")
 
 
-class MojoTXMonitor(MojoThread):
+class MojoRXTXMonitor(MojoThread):
+    incomingMessage = Event()
+
+class MojoTXMonitor(MojoRXTXMonitor):
     
     def __init__(self, conn):
         MojoThread.__init__(self)
@@ -63,7 +66,7 @@ class MojoTXMonitor(MojoThread):
         self.messages.put(msg)
             
 
-class MojoRXMonitor(MojoThread):
+class MojoRXMonitor(MojoRXTXMonitor):
     
     def __init__(self, conn):
         MojoThread.__init__(self)
@@ -76,7 +79,7 @@ class MojoRXMonitor(MojoThread):
         log.debug("Starting MojoRXMonitor Thread")
         
         while(not self.stop_event.isSet()):
-            self.incomingMessage.wait(.2) #Wait 0.2 second and check for new message
+            self.incomingMessage.wait(2) #Wait 0.5 second and check for new message
             rs = self.conn.mojoRead()
             if rs:
                 for r in rs:

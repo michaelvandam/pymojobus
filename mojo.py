@@ -59,4 +59,5 @@ if __name__=='__main__':
     mojo.makeConnection(config)
     time.sleep(2)
     devices = mojo.getDevices()
+    mojo.stopDeviceUpdating()
     #deviceViews = mojo.getDeviceViews()

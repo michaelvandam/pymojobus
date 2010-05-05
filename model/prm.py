@@ -34,6 +34,7 @@ class PRM(MojoUpdatingDevice):
     OFF = "OFF"
     ERR = "?ERR"
     GO = "GO"
+    MAX = "MAX"
     
     def __init__(self, *args, **kwargs):
         MojoUpdatingDevice.__init__(self, *args, **kwargs)
@@ -56,9 +57,17 @@ class PRM(MojoUpdatingDevice):
         self.reactorTemperature = 0
         self.reactorSetpoint = 0
     
+    def goGetTemp(self):
+        cmd = self.findCommand("Temperature")
+        self.sendMsg.addCommand(cmd)
+        self.send() 
+        
     def goHeaterOn(self):
         self.goCommand("HeaterControl", self.ON)
-    
+        
+    def goHeaterMax(self):
+        self.goCommand("HeaterControl", self.MAX)
+        
     def goHeaterOff(self):
         self.goCommand("HeaterControl", self.OFF)
     

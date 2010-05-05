@@ -314,7 +314,7 @@ class PRMView(DeviceView):
         elif self.model.zState == self.model.ZERR:
             log.debug("%s Show ZERR" % self.model.name)
 
-        self.currentTempLabel.setText("%2.1f\xB0C" % self.model.reactorTemperature)
+        self.currentTempLabel.setText("%3.0f\xB0C" % self.model.reactorTemperature)
         
 
 def main(argv):
