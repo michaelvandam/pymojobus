@@ -28,7 +28,6 @@ log = logging.getLogger()
 msglog = logging.getLogger("mojo.message")
 errlog = logging.getLogger("mojo.error")
 
-
 class MojoRXTXMonitor(MojoThread):
     incomingMessage = Event()
 
@@ -46,16 +45,18 @@ class MojoTXMonitor(MojoRXTXMonitor):
         
         while(not self.stop_event.isSet()):
             if not self.incomingMessage.isSet():
-                #time.sleep(.15)
                 try:
                     msg = self.messages.get_nowait()
-                    msglog.info("Sent: %s" % str(msg).strip())
+                    self.incomingMessage.set()
+                    log.info("Sent: %s" % str(msg).strip())
                     self.conn._mojoWrite(msg)
                     self.messages.task_done()
-                    self.incomingMessage.set()
                 except Queue.Empty:
-                    pass
+                    msglog.info("No message to send...")
+            else:
+                msglog.info("Waiting on reply...")
                 
+            
         self.stop_event.clear()
         msglog.info("Shutdown TX Thread")
         #MojoTXMonitor.__init__(self, self.conn)
@@ -79,14 +80,14 @@ class MojoRXMonitor(MojoRXTXMonitor):
         log.debug("Starting MojoRXMonitor Thread")
         
         while(not self.stop_event.isSet()):
-            self.incomingMessage.wait(2) #Wait 0.5 second and check for new message
+            self.incomingMessage.wait(5) #Wait 0.5 second and check for new message
             rs = self.conn.mojoRead()
             if rs:
                 for r in rs:
                     self.responses.put(r)
-                    msglog.info("Received: %s" % str(r).strip())
-            self.incomingMessage.clear()
-        
+                    log.info("Received: %s" % str(r).strip())
+                    self.incomingMessage.clear()
+            
         self.stop_event.clear()
         msglog.info("Shutdown RX Thread")
         #MojoRXMonitor.__init__(self, self.conn)
