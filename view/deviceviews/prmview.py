@@ -43,13 +43,11 @@ class PRMView(DeviceView):
         tempDial.setNotchesVisible(True)
         tempDial.setNotchTarget(20)
         self.tempSpinbox = QDoubleSpinBox()
-        self.tempSpinbox.setRange(20.0,250.0)
-        tempDial.setRange(20.0,250.0)
-        self.tempSpinbox.setSingleStep(0.5)
+        self.tempSpinbox.setRange(20,250)
+        tempDial.setRange(20,250)
+        self.tempSpinbox.setSingleStep(.5)
         self.tempSpinbox.setSuffix(u"\xB0C")
-        self.connect(tempDial, SIGNAL('valueChanged(int)'), self.tempSpinbox.setValue)
-        self.connect(self.tempSpinbox, SIGNAL('valueChanged(int)'), tempDial.setValue)
-        setPointLayout.addWidget(tempDial)
+        #setPointLayout.addWidget(tempDial)
         setPointLayout.addWidget(self.tempSpinbox)
         
         onHeatLabel = QLabel("On")
@@ -99,8 +97,6 @@ class PRMView(DeviceView):
         self.stirSpeedSpinBox.setRange(0,255)
         stirLayout.addWidget(stirDial)
         stirLayout.addWidget(self.stirSpeedSpinBox)
-        self.connect(stirDial, SIGNAL('valueChanged(int)'), self.stirSpeedSpinBox.setValue)
-        self.connect(self.stirSpeedSpinBox, SIGNAL('valueChanged(int)'), stirDial.setValue)
         self.stirButton = QPushButton("Set Speed")
         stirLayout.addWidget(self.stirButton)
         
@@ -180,15 +176,28 @@ class PRMView(DeviceView):
         self.connect(self.coolOffButton, SIGNAL("clicked()"), self.runCoolOff)
         self.connect(self.stirButton, SIGNAL("clicked()"), self.runStir)
         self.connect(tempDial, SIGNAL("dialReleased()"), self.setTemp)
-        self.connect(self.tempSpinbox, SIGNAL("valueChanged(int)"), self.setTemp)
         self.connect(heatOnButton, SIGNAL("clicked()"), self.runHeatOn)
         self.connect(heatOffButton, SIGNAL("clicked()"), self.runHeatOff)
+        
+        self.connect(stirDial, SIGNAL('valueChanged(int)'), self.stirSpeedSpinBox.setValue)
+        self.connect(self.stirSpeedSpinBox, SIGNAL('valueChanged(int)'), stirDial.setValue)
+        
+        self.connect(tempDial, SIGNAL('valueChanged(int)'), self.tempSpinbox.setValue)
+        self.connect(self.tempSpinbox, SIGNAL('valueChanged(double)'), tempDial.setValue)
+        
+        #self.connect(self.tempSpinbox, SIGNAL("editingFinished"), self.setTemp)
+        self.connect(self.tempSpinbox, SIGNAL("valueChanged(double)"), self.setTemp)
+        #self.connect(tempDial, SIGNAL('valueChanged(int)'), self.setTemp)
+        
     
     def runHeatOn(self):
+        self._disableCool()
         self.model.goHeaterOn()
     
     def runHeatOff(self):
+        self._enableCool()
         self.model.goHeaterOff()
+        
     
     def setTemp(self):
         temp = float(self.tempSpinbox.value())
@@ -250,6 +259,14 @@ class PRMView(DeviceView):
     def _disableAll(self):
         self._disableX()
         self._disableZ()
+        
+    def _disableCool(self):
+        self.coolOffButton.setDisabled(True)
+        self.coolOnButton.setDisabled(True)
+    
+    def _enableCool(self):
+        self.coolOffButton.setDisabled(False)
+        self.coolOnButton.setDisabled(False)
         
     def _enableAll(self):
         self.position1Button.setDisabled(False)
