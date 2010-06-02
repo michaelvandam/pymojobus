@@ -42,21 +42,21 @@ class MojoTXMonitor(MojoRXTXMonitor):
     def run(self):
         
         log.debug("Starting MojoTXMonitor Thread")
-        
+        msglog.info("Starting MojoTXMonitor Thread")
         while(not self.stop_event.isSet()):
             if not self.incomingMessage.isSet():
                 try:
-                    msg = self.messages.get_nowait()
-                    self.incomingMessage.set()
+                    msg = self.messages.get(True,2)
                     log.info("Sent: %s" % str(msg).strip())
+                    msglog.info("Sent: %s" % str(msg).strip())
                     self.conn._mojoWrite(msg)
+                    self.incomingMessage.set()
                     self.messages.task_done()
                 except Queue.Empty:
-                    msglog.info("No message to send...")
+                    msglog.debug("No message to send...")
             else:
-                msglog.info("Waiting on reply...")
+                msglog.debug("Waiting on reply...")
                 
-            
         self.stop_event.clear()
         msglog.info("Shutdown TX Thread")
         #MojoTXMonitor.__init__(self, self.conn)
@@ -76,17 +76,27 @@ class MojoRXMonitor(MojoRXTXMonitor):
         self.setName("RX Thread")
     
     def run(self):
-        
         log.debug("Starting MojoRXMonitor Thread")
-        
+        msglog.info("Starting MojoRXMonitor Thread")
         while(not self.stop_event.isSet()):
-            self.incomingMessage.wait(5) #Wait 0.5 second and check for new message
-            rs = self.conn.mojoRead()
-            if rs:
-                for r in rs:
-                    self.responses.put(r)
-                    log.info("Received: %s" % str(r).strip())
+            if self.incomingMessage.isSet() and self.conn.inWaiting() <= 0:
+                time.sleep(.1)
+                msglog.debug("Waiting for incoming reply...")
+                if self.conn.inWaiting() <= 0:
+                    msglog.error("No reply...")
                     self.incomingMessage.clear()
+            elif self.incomingMessage.isSet() and self.conn.inWaiting() > 0:
+                rs = self.conn.mojoRead()
+                if rs:
+                    for r in rs:
+                        self.responses.put(r)
+                        log.info("Received: %s" % str(r).strip())
+                        msglog.info("Received: %s" % str(r).strip())
+                        self.incomingMessage.clear()        
+            else:
+                msglog.debug("No incoming message...")
+                self.incomingMessage.wait(.1)
+                
             
         self.stop_event.clear()
         msglog.info("Shutdown RX Thread")

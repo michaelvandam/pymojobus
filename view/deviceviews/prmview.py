@@ -3,102 +3,316 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from utils.mojodeviceview import DeviceView
 import logging
-        
+from threading import Event
+    
 errlog = logging.getLogger("mojo.error")
 log = logging.getLogger()
+class OnOffSwitch(QGroupBox):
+    def __init__(self, title, parent=None):
+        QGroupBox.__init__(self, title, parent)
+        
+        layout = QGridLayout()
+        self.setLayout(layout)
+        
+        onLabel = QLabel("On")
+        offLabel = QLabel("Off")
+        
+        self.slide = QSlider()
+        self.slide.setOrientation(Qt.Vertical)
+        self.slide.setRange(0,1)
+        self.slide.setFixedSize(30,25)
+        
+        layout.addWidget(onLabel,0,0)
+        layout.addWidget(offLabel,2,0)
+        layout.addWidget(self.slide,1,0)
 
+        self.setFixedSize(80,100)
+        
+        self.connect(self.slide, SIGNAL("valueChanged(int)"), self.stateChanged)
+        
+    def stateChanged(self):
+        if int(self.slide.value()) == 1:
+            self.emit(SIGNAL("turnOn"))
+        else:
+            self.emit(SIGNAL("turnOff"))
+        
+    def setOn(self):
+        self.slide.setValue(1)
+    
+    def setOff(self):
+        self.slide.setValue(0)
+        
+    def lock(self):
+        self.slide.setDisabled(True)
+
+    def unlock(self):
+        self.slide.setDisabled(False)
+
+
+class TransferController(OnOffSwitch):
+    def __init__(self,title="Transfer",parent=None):
+        OnOffSwitch.__init__(self,title,parent)
+
+class AUXController(OnOffSwitch):
+    def __init__(self,title="AUX",parent=None):
+        OnOffSwitch.__init__(self,title,parent)
+    
+
+class StirController(QGroupBox):
+    def __init__(self, parent=None):
+        QGroupBox.__init__(self,parent)
+        self.setTitle("Stir Speed")
+        layout = QGridLayout()
+        self.setLayout(layout)
+        self.values = [0,115,120,130,140,160,180,200,220,240,255]
+        self.dial = QDial()
+        self.dial.setFixedSize(60,60)
+        self.dial.setNotchesVisible(True)
+        self.dial.setNotchTarget(1)
+        self.dial.setRange(0,10)
+        self.stirLabel = QLabel("0")
+        layout.addWidget(self.dial,0,0)
+        layout.addWidget(self.stirLabel,0,1)
+        self.connect(self.dial,SIGNAL('valueChanged(int)'), self.stirChanged)
+        self.setFixedSize(100,100)
+    def getValue(self):
+        return self.values[int(self.dial.value())]
+        
+    def getDialValue(self):
+        return int(self.dial.value())
+        
+    def stirChanged(self):
+        self.stirLabel.setText("%d" % self.getDialValue())
+        self.emit(SIGNAL('stirSpeedChanged'))
+        
+
+class TimeSelector(QGroupBox):
+    def __init__(self, parent=None, *args, **kwargs):
+        QGroupBox.__init__(self, parent)
+        
+        layout = QGridLayout()
+        self.setLayout(layout)
+        self.setTitle("Timer")
+        
+        self.time = QTime()
+        
+        self.clockStart = Event()
+        
+        hourLabel = QLabel("Hours")
+        self.hours = QSpinBox()
+        self.hours.setRange(0,300)
+        minLabel = QLabel("Minutes")
+        self.minutes = QSpinBox()
+        self.minutes.setRange(0,60)
+        secLabel = QLabel("Seconds")
+        self.seconds = QSpinBox()
+        self.seconds.setRange(0,60)
+        self.resetTimeButton = QPushButton("Set Time")
+        
+        self.currentTime = QLabel()
+        self.currentTime.setAlignment(Qt.AlignHCenter)
+        self.startButton = QPushButton("Start")
+        self.stopButton = QPushButton("Stop")
+        self.tempTimer = QTimer()
+        self.tempTimer.setInterval(1000)
+        self.tempTimer.stop()
+
+        self.status = QLabel("Stopped")
+        self.status.setAlignment(Qt.AlignHCenter)
+        
+        timeGroup = QGroupBox("Timer")
+        layout.addWidget(self.status,0,0,1,3)
+        layout.addWidget(self.currentTime,1,0,1,3)
+        layout.addWidget(hourLabel,2,0)
+        layout.addWidget(minLabel,2,1)
+        layout.addWidget(secLabel,2,2)
+        layout.addWidget(self.hours,3,0)
+        layout.addWidget(self.minutes,3,1)
+        layout.addWidget(self.seconds,3,2)
+        layout.addWidget(self.resetTimeButton,4,2)
+        layout.addWidget(self.startButton,4,0)
+        layout.addWidget(self.stopButton,4,1)
+        
+        
+        self.connect(self.tempTimer, SIGNAL("timeout()"), self.showTime);
+        self.connect(self.startButton, SIGNAL("clicked()"), self.start);
+        self.connect(self.stopButton, SIGNAL("clicked()"), self.stop);
+        self.connect(self.resetTimeButton, SIGNAL("clicked()"), self.resetTime)
+
+        self.resetTime()
+        self.tempTimer.stop()
+    
+    def resetTime(self):
+        hours = int(self.hours.value())
+        minutes = int(self.minutes.value())
+        seconds = int(self.seconds.value())
+        self.time.setHMS(hours,minutes,seconds,0)
+        self.updateTime()
+    
+    def updateTime(self):
+        timeString = self.time.toString("hh:mm:ss")
+        self.currentTime.setText(timeString)
+    
+    def showTime(self):
+        
+        self.updateTime()
+        h = self.time.hour()
+        m = self.time.minute()
+        s = self.time.second()
+        
+        if not(h == 0 and m == 0 and s == 0):
+            if self.clockStart.isSet():
+                self.time = self.time.addSecs(-1)
+            else:
+                self.emit(SIGNAL("waitingForTemp"))
+        else:
+            self.emit(SIGNAL("timesup"))
+            self.stop()
+            self.resetTime()
+            
+    def heaterStart(self):
+        self.emit(SIGNAL("heaterStart"))
+    
+    def start(self):
+        self.emit(SIGNAL("timerStart"))
+        self.tempTimer.start()
+
+    def stop(self):
+        self.emit(SIGNAL("timerStop"))
+        self.tempTimer.stop()
+        self.clockStart.clear()
+    
+    def startClock(self):
+        self.clockStart.set()
+        
+    def setStatus(self, s):
+        self.status.setText(s)
+    
+class TempController(QGroupBox):
+    def __init__(self, parent=None, *args, **kwargs):
+        QGroupBox.__init__(self, parent)
+        
+        layout = QGridLayout()
+        self.setTitle("Temperature Controller")
+        self.setLayout(layout)
+        
+        #Current Temp
+        currentTempGroup = QGroupBox("Reactor Temperature")
+        currentTempLayout = QGridLayout()
+        self.currentTempLabel = QLabel("NA")
+        self.currentTempLabel.setAlignment(Qt.AlignHCenter)
+        self.currentTemp = 0
+        currentTempGroup.setLayout(currentTempLayout)
+        currentTempLayout.addWidget(self.currentTempLabel,0,0,1,3)
+        
+        #Time Selector
+        self.setTime = TimeSelector(self)
+        #Heater on / off switch
+        self.heaterOnOffGroup = OnOffSwitch("Heater")
+        self.coolingOnOffGroup = OnOffSwitch("Cooling")
+        
+        #Set Point selector
+        setPointGroup = QGroupBox("Set Point")
+        setPointLayout= QHBoxLayout()
+        setPointGroup.setLayout(setPointLayout)
+        self.tempSpinbox = QDoubleSpinBox()
+        self.tempSpinbox.setRange(0,300)
+        self.tempSpinbox.setSingleStep(.5)
+        self.tempSpinbox.setValue(20.0)
+        self.tempSpinbox.setSuffix(u"\xB0C")
+        setPointLayout.addWidget(self.tempSpinbox)
+        
+        
+        layout.addWidget(currentTempGroup,0,0,1,3)
+        layout.addWidget(self.heaterOnOffGroup,1,0)
+        layout.addWidget(self.coolingOnOffGroup,1,1)
+        layout.addWidget(setPointGroup,1,2)
+        layout.addWidget(self.setTime,2,0,1,3)
+        
+        self.connect(self.heaterOnOffGroup, SIGNAL("turnOn"), self.turnHeaterOn)
+        self.connect(self.heaterOnOffGroup, SIGNAL("turnOff"), self.turnHeaterOff)
+        
+        self.connect(self.coolingOnOffGroup, SIGNAL("turnOn"), self.turnCoolingOn)
+        self.connect(self.coolingOnOffGroup, SIGNAL("turnOff"), self.turnCoolingOff)
+        
+        self.connect(self.setTime, SIGNAL("timesup"), self.turnHeatOffCoolOn)
+        self.connect(self.setTime,SIGNAL("timerStart"), self.timerTurnHeaterOn)
+        self.connect(self.setTime,SIGNAL("timerStop"), self.unlock)
+        self.connect(self.tempSpinbox,SIGNAL("valueChanged(double)"), self.changeSetpoint)
+        self.connect(self.setTime,SIGNAL("waitingForTemp"), self.checkTemp)
+    
+    def checkTemp(self):
+        self.setTime.setStatus("Waiting for temperature to rise...")
+        if self.getSetpoint() < self.currentTemp:
+            self.setTime.setStatus("Timer running...")
+            self.setTime.clockStart.set()
+    
+    def timerTurnHeaterOn(self):
+        self.turnHeaterOn()
+        self.turnCoolingOff()
+        self.lock()
+    
+    def turnHeatOffCoolOn(self):
+        self.heaterOnOffGroup.setOff()
+        self.coolingOnOffGroup.setOn()
+        self.unlock()
+        #self.emit(SIGNAL("turnHeatOffCoolOn"))
+        
+    def turnHeaterOn(self):
+        self.heaterOnOffGroup.setOn()
+        self.emit(SIGNAL("turnOnHeat"))
+    
+    def turnHeaterOff(self):
+        self.emit(SIGNAL("turnOffHeat"))
+    
+    def turnCoolingOn(self):
+        self.coolingOnOffGroup.setOn()
+        self.emit(SIGNAL("turnOnCool"))
+    
+    def turnCoolingOff(self):
+        self.coolingOnOffGroup.setOff()
+        self.emit(SIGNAL("turnOffCool"))
+    
+    def lock(self):
+        self.coolingOnOffGroup.setDisabled(True)
+        self.heaterOnOffGroup.setDisabled(True)
+    
+    def unlock(self):
+        self.setTime.setStatus("Stopped")
+        self.coolingOnOffGroup.setDisabled(False)
+        self.heaterOnOffGroup.setDisabled(False)
+    
+    def changeSetpoint(self):
+        self.emit(SIGNAL("setpointChanged"))
+
+    def getSetpoint(self):
+        temp = float(self.tempSpinbox.value())
+        return temp
+
+    def setCurrentTemp(self, temp):
+        self.currentTempLabel.setText("%3.0f\xB0C" % temp)
+        self.currentTemp=temp
+    
+    def startTimer(self):
+        self.setTime.start()
+        
 class PRMView(DeviceView):
     deviceType = "PRM"
     def __init__(self, prmModel=None, parent=None, *args, **kwargs):
         DeviceView.__init__(self, parent=parent, deviceModel=prmModel)            
         
         
-        # Temperature Controls
-        tempGroup = QGroupBox("Temperature")
+        # Temperature Control Timer
+        self.tempTimer = TempController()
         
-        tempStatusGroup = QGroupBox("Status")
-        tempStatusLayout = QGridLayout()
-        tempStatusGroup.setLayout(tempStatusLayout)
-        tempLayout = QGridLayout()
-        tempGroup.setLayout(tempLayout)
-        heatGroup = QGroupBox("Heat")
-        heatLayout = QGridLayout()
-        heatGroup.setLayout(heatLayout)
-        coolGroup = QGroupBox("Cool")
-        coolLayout = QGridLayout()
-        coolGroup.setLayout(coolLayout)
-        tempLayout.addWidget(tempStatusGroup)
-        tempLayout.addWidget(heatGroup)
-        tempLayout.addWidget(coolGroup)
-        tempGroup.setCheckable(True)
+        #Stir Controller
+        self.stirGroup = StirController()
         
-        currentTempLabel = QLabel("Current Temperature:")
-        self.currentTempLabel = QLabel("25\xB0C")
-        currentTempLabel.setBuddy(self.currentTempLabel)
-        tempStatusLayout.addWidget(currentTempLabel, 0, 0)
-        tempStatusLayout.addWidget(self.currentTempLabel, 0,1)
+        #Transfer Controller
+        self.transferGroup = TransferController()
         
-        setPointLayout  = QHBoxLayout()
-        tempDial = QDial()
-        tempDial.setNotchesVisible(True)
-        tempDial.setNotchTarget(20)
-        self.tempSpinbox = QDoubleSpinBox()
-        self.tempSpinbox.setRange(20,250)
-        tempDial.setRange(20,250)
-        self.tempSpinbox.setSingleStep(.5)
-        self.tempSpinbox.setSuffix(u"\xB0C")
-        #setPointLayout.addWidget(tempDial)
-        setPointLayout.addWidget(self.tempSpinbox)
-        
-        onHeatLabel = QLabel("On")
-        offHeatLabel = QLabel("Off")
-        heatOnOffGroup = QGroupBox()
-        heatOnOffLayout = QHBoxLayout()
-        heatOnOffGroup.setLayout(heatOnOffLayout)
-        heatOnButton = QRadioButton()
-        heatOffButton = QRadioButton()
-        heatOffButton.setChecked(True)
-        heatOnOffLayout.addWidget(onHeatLabel)
-        heatOnOffLayout.addWidget(heatOnButton)
-        heatOnOffLayout.addWidget(offHeatLabel)
-        heatOnOffLayout.addWidget(heatOffButton)
-        
-        onCoolLabel = QLabel("On")
-        offCoolLabel = QLabel("Off")
-        coolOnOffGroup = QGroupBox()
-        coolOnOffLayout = QHBoxLayout()
-        coolOnOffGroup.setLayout(coolOnOffLayout)
-        self.coolOnButton = QRadioButton()
-        self.coolOffButton = QRadioButton()
-        self.coolOffButton.setChecked(True)
-        coolOnOffLayout.addWidget(onCoolLabel)
-        coolOnOffLayout.addWidget(self.coolOnButton)
-        coolOnOffLayout.addWidget(offCoolLabel)
-        coolOnOffLayout.addWidget(self.coolOffButton)
-        
-        
-        heatLayout.addLayout(setPointLayout,0,0)
-        heatLayout.addWidget(heatOnOffGroup,1,0)
-        coolLayout.addWidget(coolOnOffGroup)
-        
-        
-        
-        #Stir Controls
-        stirGroup = QGroupBox("Stir")
-        stirGroup.setCheckable(True)
-        stirLayout = QHBoxLayout()
-        stirGroup.setLayout(stirLayout)
-        stirDial = QDial()
-        stirDial.setNotchesVisible(True)
-        stirDial.setNotchTarget(50)
-        self.stirSpeedSpinBox = QSpinBox()
-        self.stirSpeedSpinBox.setSuffix("")
-        stirDial.setRange(0,255)
-        self.stirSpeedSpinBox.setRange(0,255)
-        stirLayout.addWidget(stirDial)
-        stirLayout.addWidget(self.stirSpeedSpinBox)
-        self.stirButton = QPushButton("Set Speed")
-        stirLayout.addWidget(self.stirButton)
+        #AUX Controller
+        self.auxGroup = AUXController()
         
         #Motion Controls
         motionGroup = QGroupBox("Motion")
@@ -120,29 +334,13 @@ class PRMView(DeviceView):
         motionLayout.addWidget(xGroup)
         #motionLayout.addWidget(rGroup)
         motionGroup.setLayout(motionLayout)
+        
         layout = QGridLayout()
-        
-    
-        #Transfer Control Group
-        transferLayout = QGridLayout()
-        transferGroup = QGroupBox("Transfer")
-        onTransferLabel = QLabel("On")
-        offTransferLabel = QLabel("Off")
-        transferOnOffLayout = QHBoxLayout()
-        transferGroup.setLayout(transferOnOffLayout)
-        self.transferOnButton = QRadioButton()
-        self.transferOffButton = QRadioButton()
-        self.transferOffButton.setChecked(True)
-        transferOnOffLayout.addWidget(onTransferLabel)
-        transferOnOffLayout.addWidget(self.transferOnButton)
-        transferOnOffLayout.addWidget(offTransferLabel)
-        transferOnOffLayout.addWidget(self.transferOffButton)
-        transferLayout.addWidget(transferGroup)
-        
-        layout.addWidget(motionGroup,0,0)
-        layout.addWidget(transferGroup,1,0)
-        layout.addWidget(tempGroup,2,0)
-        layout.addWidget(stirGroup,3,0)
+        layout.addWidget(motionGroup,0,0,1,3)
+        layout.addWidget(self.transferGroup,1,0,1,1)
+        layout.addWidget(self.auxGroup,1,1,1,1)
+        layout.addWidget(self.stirGroup,1,2,1,1)
+        layout.addWidget(self.tempTimer,2,0,1,3)
         
         # Motion Buttons
         self.sealButton = QPushButton("Seal")
@@ -165,51 +363,52 @@ class PRMView(DeviceView):
         
         self.setLayout(layout)
         
+        #Position Signal and Slots
         self.connect(self.position1Button, SIGNAL("clicked()"), self.runMoveXPos1)
         self.connect(self.position2Button, SIGNAL("clicked()"), self.runMoveXPos2)
         self.connect(self.position3Button, SIGNAL("clicked()"), self.runMoveXPos3)
         self.connect(self.openButton, SIGNAL("clicked()"), self.runMoveZDown)
         self.connect(self.sealButton, SIGNAL("clicked()"), self.runMoveZUp)
-        self.connect(self.transferOnButton, SIGNAL("clicked()"), self.runTransferOn)
-        self.connect(self.transferOffButton, SIGNAL("clicked()"), self.runTransferOff)
-        self.connect(self.coolOnButton, SIGNAL("clicked()"), self.runCoolOn)
-        self.connect(self.coolOffButton, SIGNAL("clicked()"), self.runCoolOff)
-        self.connect(self.stirButton, SIGNAL("clicked()"), self.runStir)
-        self.connect(tempDial, SIGNAL("dialReleased()"), self.setTemp)
-        self.connect(heatOnButton, SIGNAL("clicked()"), self.runHeatOn)
-        self.connect(heatOffButton, SIGNAL("clicked()"), self.runHeatOff)
         
-        self.connect(stirDial, SIGNAL('valueChanged(int)'), self.stirSpeedSpinBox.setValue)
-        self.connect(self.stirSpeedSpinBox, SIGNAL('valueChanged(int)'), stirDial.setValue)
+        #Transfer Signals and Slots
+        self.connect(self.transferGroup, SIGNAL("turnOn"), self.runTransferOn)
+        self.connect(self.transferGroup, SIGNAL("turnOff"), self.runTransferOff)
         
-        self.connect(tempDial, SIGNAL('valueChanged(int)'), self.tempSpinbox.setValue)
-        self.connect(self.tempSpinbox, SIGNAL('valueChanged(double)'), tempDial.setValue)
+        #Aux Signal and Slots
+        self.connect(self.auxGroup, SIGNAL("turnOn"), self.runAuxOn)
+        self.connect(self.auxGroup, SIGNAL("turnOff"), self.runAuxOff)
         
-        #self.connect(self.tempSpinbox, SIGNAL("editingFinished"), self.setTemp)
-        self.connect(self.tempSpinbox, SIGNAL("valueChanged(double)"), self.setTemp)
-        #self.connect(tempDial, SIGNAL('valueChanged(int)'), self.setTemp)
+        #Stir Signal and Slots
+        self.connect(self.stirGroup, SIGNAL("stirSpeedChanged"), self.runStir)
+        
+        #Temperature Controller Signal and Slots
+        self.connect(self.tempTimer, SIGNAL("turnHeatOffCoolOn"), self.turnOffHeaterAndCoolOn)
+        self.connect(self.tempTimer, SIGNAL("turnOnHeat"), self.runHeatOn)
+        self.connect(self.tempTimer, SIGNAL("turnOffHeat"), self.runHeatOff)
+        self.connect(self.tempTimer, SIGNAL("turnOnCool"), self.runCoolOn)
+        self.connect(self.tempTimer, SIGNAL("turnOffCool"), self.runCoolOff)
+        self.connect(self.tempTimer, SIGNAL("setpointChanged"), self.setTemp)
+        
+    def turnOffHeaterAndCoolOn(self):
+        self.runHeatOff()
+        self.runCoolOn()
         
     
     def runHeatOn(self):
-        self._disableCool()
         self.model.goHeaterOn()
     
     def runHeatOff(self):
-        self._enableCool()
         self.model.goHeaterOff()
-        
     
     def setTemp(self):
-        temp = float(self.tempSpinbox.value())
+        temp = self.tempTimer.getSetpoint()
         self.model.goSetpoint(temp)
         
     def runStir(self):
-        speed = int(self.stirSpeedSpinBox.value())
-        self.model.goMix(speed)
+        self.model.goMix(self.stirGroup.getValue())
         
     def runCoolOn(self):
         self.model.goCoolOn()
-    
     def runCoolOff(self):
         self.model.goCoolOff()
 
@@ -218,7 +417,10 @@ class PRMView(DeviceView):
     
     def runTransferOff(self):
         self.model.goTransferOff()
-    
+    def runAuxOn(self):
+        self.model.goAuxOn()
+    def runAuxOff(self):
+        self.model.goAuxOff()
     def runMoveXPosHome(self):
         self.model.goMoveXHome()
         
@@ -331,7 +533,7 @@ class PRMView(DeviceView):
         elif self.model.zState == self.model.ZERR:
             log.debug("%s Show ZERR" % self.model.name)
 
-        self.currentTempLabel.setText("%3.0f\xB0C" % self.model.reactorTemperature)
+        self.tempTimer.setCurrentTemp(self.model.reactorTemperature)
         
 
 def main(argv):

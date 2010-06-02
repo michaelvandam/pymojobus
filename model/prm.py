@@ -42,20 +42,26 @@ class PRM(MojoUpdatingDevice):
         updateMsg.addCommand(self.findCommand("MoveX"))
         updateMsg.addCommand(self.findCommand("MoveZ"))
         updateMsg.addCommand(self.findCommand("Temperature"))
+        updateMsg.addCommand(self.findCommand("SetPoint"))
         self.updateMsgs.append(updateMsg)
         self.startUpdating()
-        self.xState = self.BUSY
-        self.zState = None
-        self.coolState = self.OFF
-        self.transferState = self.OFF
+
         self.addResponseCallback("MoveX", self.moveXRespond)
         self.addResponseCallback("MoveZ", self.moveZRespond)
         self.addResponseCallback("Cool", self.coolRespond)
         self.addResponseCallback("Transfer", self.transferRespond)
         self.addResponseCallback("Temperature", self.tempRespond)
-        self.xposition = 0
+        self.addResponseCallback("Auxillary", self.auxRespond)
+        
+        self.xState = self.BUSY
+        self.zState = self.DOWN
+        self.coolState = self.OFF
+        self.transferState = self.OFF
         self.reactorTemperature = 0
         self.reactorSetpoint = 0
+        self.transferState = self.OFF
+        self.auxState = self.OFF
+        self.coolState = self.OFF
     
     def goGetTemp(self):
         cmd = self.findCommand("Temperature")
@@ -95,6 +101,12 @@ class PRM(MojoUpdatingDevice):
     def goTransferOff(self):
         self.goCommand("Transfer", self.OFF)
 
+    def goAuxOn(self):
+        self.goCommand("Auxillary", self.ON)
+
+    def goAuxOff(self):
+        self.goCommand("Auxillary", self.OFF)
+        
     def goCoolOn(self):
         self.goCommand("Cool", self.ON)
     
@@ -161,6 +173,16 @@ class PRM(MojoUpdatingDevice):
             log.debug("%s Cool %s" % (str(self), self.coolState))
         else:
             self.coolState=self.ERR
+    
+    def auxRespond(self, param):
+        if param == self.ON:
+            self.auxState=self.ON
+            log.debug("%s Cool %s" % (str(self), self.auxState))
+        elif param == self.OFF:
+            self.auxState=self.OFF
+            log.debug("%s AUX %s" % (str(self), self.auxState))
+        else:
+            self.auxState=self.ERR
     
     def tempRespond(self,param):
         try:
