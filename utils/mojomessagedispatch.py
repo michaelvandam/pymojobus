@@ -46,8 +46,10 @@ class MojoResponseDispatch( MojoThread ):
                         log.info("Device expecting different response, could be update message")
                         
                     log.debug("Dispatch Msg: %s -> Device:%s" % (str(response).strip(),device))
-                    device.processResponse(response)
-                    
+                    try:
+                        device.processResponse(response)
+                    except:
+                        log.error("%s -> Device unable to process response" % device)
                 except MojoException, e:
                     errlog.error("Error with response dispatch: %s" % e)
                     

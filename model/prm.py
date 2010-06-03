@@ -62,6 +62,7 @@ class PRM(MojoUpdatingDevice):
         self.transferState = self.OFF
         self.auxState = self.OFF
         self.coolState = self.OFF
+        self.wasteState = self.ON
     
     def goGetTemp(self):
         cmd = self.findCommand("Temperature")
@@ -106,6 +107,12 @@ class PRM(MojoUpdatingDevice):
 
     def goAuxOff(self):
         self.goCommand("Auxillary", self.OFF)
+        
+    def goWasteOn(self):
+        self.goCommand("Waste", self.ON)
+
+    def goWasteOff(self):
+        self.goCommand("Waste", self.OFF)
         
     def goCoolOn(self):
         self.goCommand("Cool", self.ON)
@@ -177,13 +184,23 @@ class PRM(MojoUpdatingDevice):
     def auxRespond(self, param):
         if param == self.ON:
             self.auxState=self.ON
-            log.debug("%s Cool %s" % (str(self), self.auxState))
+            log.debug("%s AUX %s" % (str(self), self.auxState))
         elif param == self.OFF:
             self.auxState=self.OFF
             log.debug("%s AUX %s" % (str(self), self.auxState))
         else:
             self.auxState=self.ERR
     
+    def wasteRespond(self, param):
+        if param == self.ON:
+            self.wasteState=self.ON
+            log.debug("%s Waste %s" % (str(self), self.wasteState))
+        elif param == self.OFF:
+            self.auxState=self.OFF
+            log.debug("%s Waste %s" % (str(self), self.wasteState))
+        else:
+            self.wasteState=self.ERR
+            
     def tempRespond(self,param):
         try:
             self.reactorTemperature = float(param)

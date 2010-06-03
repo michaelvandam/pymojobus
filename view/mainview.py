@@ -7,6 +7,7 @@ from PyQt4.QtGui import *
 import qrc_resources
 from connectionview import SerialConnectionView
 from sqlalchemy.exc import IntegrityError
+from operator import itemgetter, attrgetter
 
 class DeviceWidgetItem(QListWidgetItem):
 
@@ -227,7 +228,7 @@ class MainWindow(QMainWindow):
     def searchForDevices(self):
         self.mojo.getDevices()
         self.mojo.getDeviceViews()
-        self.loadDevices(self.mojo.deviceViews.values())
+        self.loadDevices(sorted(self.mojo.deviceViews.values(),key=attrgetter('name')))
 
     def clearDevices(self):
         self.mojo.stopMonitor()

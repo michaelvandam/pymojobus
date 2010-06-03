@@ -35,7 +35,6 @@ class OnOffSwitch(QGroupBox):
             self.emit(SIGNAL("turnOn"))
         else:
             self.emit(SIGNAL("turnOff"))
-        
     def setOn(self):
         self.slide.setValue(1)
     
@@ -57,6 +56,12 @@ class AUXController(OnOffSwitch):
     def __init__(self,title="AUX",parent=None):
         OnOffSwitch.__init__(self,title,parent)
     
+
+class WasteController(OnOffSwitch):
+    def __init__(self,title="Waste",parent=None):
+        OnOffSwitch.__init__(self,title,parent)
+        self.setOn()
+
 
 class StirController(QGroupBox):
     def __init__(self, parent=None):
@@ -301,6 +306,8 @@ class PRMView(DeviceView):
     def __init__(self, prmModel=None, parent=None, *args, **kwargs):
         DeviceView.__init__(self, parent=parent, deviceModel=prmModel)            
         
+        #Waste Controller
+        self.wasteGroup = WasteController()
         
         # Temperature Control Timer
         self.tempTimer = TempController()
@@ -336,11 +343,12 @@ class PRMView(DeviceView):
         motionGroup.setLayout(motionLayout)
         
         layout = QGridLayout()
-        layout.addWidget(motionGroup,0,0,1,3)
+        layout.addWidget(motionGroup,0,0,1,4)
         layout.addWidget(self.transferGroup,1,0,1,1)
         layout.addWidget(self.auxGroup,1,1,1,1)
-        layout.addWidget(self.stirGroup,1,2,1,1)
-        layout.addWidget(self.tempTimer,2,0,1,3)
+        layout.addWidget(self.wasteGroup,1,2,1,1)
+        layout.addWidget(self.stirGroup,1,3,1,1)
+        layout.addWidget(self.tempTimer,2,0,1,4)
         
         # Motion Buttons
         self.sealButton = QPushButton("Seal")
@@ -378,6 +386,10 @@ class PRMView(DeviceView):
         self.connect(self.auxGroup, SIGNAL("turnOn"), self.runAuxOn)
         self.connect(self.auxGroup, SIGNAL("turnOff"), self.runAuxOff)
         
+        #Waste Signal and Slots
+        self.connect(self.wasteGroup, SIGNAL("turnOn"), self.runWasteOn)
+        self.connect(self.wasteGroup, SIGNAL("turnOff"), self.runWasteOff)
+        
         #Stir Signal and Slots
         self.connect(self.stirGroup, SIGNAL("stirSpeedChanged"), self.runStir)
         
@@ -392,8 +404,10 @@ class PRMView(DeviceView):
     def turnOffHeaterAndCoolOn(self):
         self.runHeatOff()
         self.runCoolOn()
-        
-    
+    def runWasteOn(self):
+        self.model.goWasteOn()
+    def runWasteOff(self):
+        self.model.goWasteOff()
     def runHeatOn(self):
         self.model.goHeaterOn()
     
