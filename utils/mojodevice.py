@@ -27,7 +27,7 @@ from mojorecorder import MojoRecorder
 
 log = logging.getLogger()
 errlog = logging.getLogger("mojo.error")
-
+msglog = logging.getLogger("mojo.message")
 
 class MojoDevice(object):
     deviceType="Default"
@@ -109,7 +109,7 @@ class MojoDevice(object):
         return self.__repr__()
         
     def processResponse(self, msg):
-        log.debug("%s processing response '%s'" % (str(self),msg))
+        msglog.debug("%s processing response '%s'" % (str(self),msg))
         self.resp = msg
         
         if not self.resp==self.lastMessage:
@@ -152,7 +152,7 @@ class MojoDeviceUpdateThread( MojoThread ):
         
         self.stop_event.clear()
         log.info("Update %s Thread Shutdown" % self.device.name)
-    
+
     def start(self, updateMessages):
         self.updateMessages = updateMessages
         MojoThread.start(self)

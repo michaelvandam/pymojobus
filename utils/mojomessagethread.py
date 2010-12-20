@@ -42,12 +42,10 @@ class MojoTXMonitor(MojoRXTXMonitor):
     def run(self):
         
         log.debug("Starting MojoTXMonitor Thread")
-        msglog.info("Starting MojoTXMonitor Thread")
         while(not self.stop_event.isSet()):
             if not self.incomingMessage.isSet():
                 try:
                     msg = self.messages.get(True,2)
-                    log.info("Sent: %s" % str(msg).strip())
                     msglog.info("Sent: %s" % str(msg).strip())
                     self.conn._mojoWrite(msg)
                     self.incomingMessage.set()
@@ -90,7 +88,6 @@ class MojoRXMonitor(MojoRXTXMonitor):
                 if rs:
                     for r in rs:
                         self.responses.put(r)
-                        log.info("Received: %s" % str(r).strip())
                         msglog.info("Received: %s" % str(r).strip())
                         self.incomingMessage.clear()        
             else:

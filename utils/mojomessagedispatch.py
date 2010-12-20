@@ -36,20 +36,20 @@ class MojoResponseDispatch( MojoThread ):
     
     def run(self):
         
-        log.debug("Starting MojoResponseDispatch Thread")
+        msglog.debug("Starting MojoResponseDispatch Thread")
         while(not self.stop_event.isSet()):
             try:
                 response = self.responses.get(False,.2)
                 try:
                     device = self.devices[response.address.sender]
                     if not device.lastMessage == response:
-                        log.info("Device expecting different response, could be update message")
+                        msglog.info("Device expecting different response, could be update message")
                         
                     log.debug("Dispatch Msg: %s -> Device:%s" % (str(response).strip(),device))
                     try:
                         device.processResponse(response)
                     except:
-                        log.error("%s -> Device unable to process response" % device)
+                        msglog.error("%s -> Device unable to process response" % device)
                 except MojoException, e:
                     errlog.error("Error with response dispatch: %s" % e)
                     

@@ -32,7 +32,6 @@ class Reservoirs( list ):
            
 class RDM(MojoDevice):
     deviceType="RDM"
-    
     LOAD = "Loading..."
     DELIVER = "Delivering "
     CLEAN = "Cleaning "

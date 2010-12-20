@@ -49,7 +49,7 @@ class MojoConnection(serial.Serial):
         time.sleep(pause)
         while(self.inWaiting()):
             s = self.readline(eol=ENDCHAR)
-            print "Response: %s" % s
+            log.debug("Response: %s" % s)
             try:
                 responses.append(MojoReceivedMessage(s))
             except MojoInvalidMessage,e:
