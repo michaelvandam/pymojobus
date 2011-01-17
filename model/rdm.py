@@ -12,7 +12,6 @@
 
 from utils.mojodevice import MojoDevice
 from utils.mojoerrors import *
-from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")

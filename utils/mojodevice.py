@@ -23,7 +23,6 @@ from mojoconfig import config, masterAddress
 from mojomessages import MojoReceivedMessage, MojoSendMessage, MojoAddress 
 from deviceconfig import getDeviceConfig
 from mojothread import MojoThread
-from mojorecorder import MojoRecorder
 
 log = logging.getLogger()
 errlog = logging.getLogger("mojo.error")
@@ -79,7 +78,6 @@ class MojoDevice(object):
         self.lastMessage = copy.copy(m)
         self.connection.mojoSend(self.lastMessage)
 
-    @MojoRecorder
     def goCommand(self, prettyName, param=None):
         cmd = self.findCommand(prettyName)
         if not param is None:

@@ -15,7 +15,6 @@ from threading import Event
 from utils.mojodevice import MojoUpdatingDevice
 from utils.mojomessages import MojoReceivedMessage, MojoSendMessage, MojoAddress
 from utils.mojoconfig import masterAddress
-from utils.mojorecorder import MojoRecorder
 from utils.mojothread import MojoThread
 import logging
 

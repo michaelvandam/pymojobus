@@ -14,11 +14,17 @@ from configobj import ConfigObj
 from validate import Validator
 from mojoerrors import *
 import logging
+import os
 
 log = logging.getLogger()
 
 log.debug("Loading Config")
-config = ConfigObj("config\mojoconfig.ini", configspec="config\mojoconfigspec.ini")
+
+configspec_path = os.path.join("config", "mojoconfigspec.ini")
+config_path = os.path.join("config","mojoconfig.ini")
+
+
+config = ConfigObj(config_path, configspec=configspec_path)
 
 log.debug("Validating Config")
 validator = Validator()

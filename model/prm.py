@@ -14,7 +14,6 @@
 from utils.mojodevice import MojoUpdatingDevice
 from utils.mojomessages import MojoReceivedMessage, MojoSendMessage, MojoAddress
 from utils.mojoconfig import masterAddress
-from utils.mojorecorder import MojoRecorder
 import logging
 
 errlog = logging.getLogger("mojo.error")
