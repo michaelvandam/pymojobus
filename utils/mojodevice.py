@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # mojodevice.py 
 # Base class for all mojo devices
 # Contains code for sending and receiving communication from the bus
