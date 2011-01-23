@@ -195,7 +195,7 @@ class PRM(MojoUpdatingDevice):
             self.wasteState=self.ON
             log.debug("%s Waste %s" % (str(self), self.wasteState))
         elif param == self.OFF:
-            self.auxState=self.OFF
+            self.wasteState=self.OFF
             log.debug("%s Waste %s" % (str(self), self.wasteState))
         else:
             self.wasteState=self.ERR
