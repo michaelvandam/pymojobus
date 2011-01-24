@@ -26,19 +26,26 @@ import os
 import time
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from unitoperation import *
+from model.prm import *
+from operation.prm_operations import *
+
 
 class OperationsView(QGroupBox):
+
     """ Displays and controls unit operations for devices in the system.
         The view constructs a DeviceOperationsView for each device in
         the system, showing only the activeDevice.
-    @ivar activeDevice  str     Address of active device (or None)
-    @ivar devices       dict    Dictionary of all devices
-                                (indexed by address)
-    @ivar views         dict    Dictionary of all DeviceOperationViews
-                                (indexed by address)
-    @ivar emptyView     obj     View to display if activeDevice == None
-    @ivar layout        obj     Layout that holds DeviceOperationViews
+        
+    @ivar activeDevice      str     Address of active device (or None)
+    @ivar selectedDevice    str     Address of selected device (or None)
+    @ivar activeOperation   obj     Active operation (or None)
+    @ivar devices           dict    Dictionary of all devices
+                                    (indexed by address)
+    @ivar views             dict    Dictionary of all DeviceOperationViews
+                                    (indexed by address)
+    @ivar emptyView         obj     View to display if activeDevice == None
+    @ivar layout            obj     Layout that holds DeviceOperationViews
+    
     """
     
     def __init__(self, parent=None):
@@ -46,6 +53,8 @@ class OperationsView(QGroupBox):
         self.devices = {}
         self.views = {}
         self.activeDevice = None
+        self.selectedDevice = None
+        self.activeOperation = None
         self.setTitle("Device Operations")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -61,8 +70,8 @@ class OperationsView(QGroupBox):
             view.setDisabled(True);
 
     def clearDevices(self):
-        self.setActiveDevice(None)  # Do this first to avoid any pointer errors
-        for address,view in self.views.items():
+        self.setSelectedDevice(None)
+        for view in self.views.values():
             self.layout.removeWidget(view)
             view.setParent(None)    # Needed to actually remove
         self.devices.clear()
@@ -76,24 +85,45 @@ class OperationsView(QGroupBox):
             view.hide()
             self.views[address] = view
             self.layout.addWidget(view)
-            self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.startOperation)
-            
-    def setActiveDevice(self, address):
-        # Add error checking
-        if self.activeDevice != address:
-            if self.activeDevice != None:
-                self.views[self.activeDevice].hide()
-            if address != None:
-                self.emptyView.hide()
-                self.views[address].show()
-            else:
-                self.emptyView.show()
-            self.activeDevice = address
+            self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
 
-    def startOperation(self, operation):
+    def setSelectedDevice(self, address):
+        old = self.selectedDevice
+        new = address
+        if old != new:
+            if old != None:
+                # Hide previously selected view
+                self.views[old].hide()
+            if new == None:
+                # Show empty view
+                self.emptyView.show()
+            else:
+                # Show newly selected view
+                self.emptyView.hide()
+                self.views[new].show()
+            self.selectedDevice = address
+
+    def slotOperationStarted(self, operation):
+        if operation != None:
+            self.activeOperation = operation
+            self.activeDevice = operation.device['address']
+            self.views[self.activeDevice].slotOperationStarted(operation)
+            self.disable()
+
+    def slotOperationFinished(self, operation):
+        if operation != self.activeOperation:
+            # TODO: raise exception
+            print "ERROR(OperationsView): finished operation != started operation"
+        self.views[self.activeDevice].slotOperationFinished(operation)
+        self.activeOperation = None
+        self.activeDevice = None
+        self.enable()            
+
+    def slotStartOperation(self, operation):
         """ Notify parent that an operation has been initiated
         """
         self.emit(SIGNAL("startOperation(PyQt_PyObject)"), operation)
+
 
 class EmptyOperationsView(QLabel):
     def __init__(self, parent=None):
@@ -131,10 +161,11 @@ class DeviceOperationsViewFactory():
         return view
 
 class DeviceOperationsView(QWidget):
-    """ Base class for showing/controlling the available operations
-        for a device.
+
+    """ Base class for showing/controlling the available operations for a device.
     @ivar device    obj     Device connected to this view
     @ivar layout    obj     Layout that holds device operations
+    @ivar views     dict    Dictionary of operation views, indexed by object id
     """
     
     def __init__(self, device=None, parent=None):
@@ -142,17 +173,32 @@ class DeviceOperationsView(QWidget):
         self.device = device
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
+        self.views = {}
         
     def addOperation(self,operation):
         view = UnitOperationControlView(operation)
+        self.views[id(operation)] = view
         self.layout.addWidget(view)
-        self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.startOperation)
-        
-    def startOperation(self, operation):
+        self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
+
+    # Signal handlers    
+    def slotStartOperation(self, operation):
         """ Notify parent that an operation has been initiated
         """
         self.emit(SIGNAL("startOperation(PyQt_PyObject)"), operation)
 
+    def slotOperationStarted(self, operation):
+        if id(operation) in self.views:
+            self.views[id(operation)].setActive(True)
+            
+    def slotOperationFinished(self, operation):
+        if id(operation) in self.views:
+            self.views[id(operation)].setActive(False)
+    
+            
+# TODO: can probably populate these automatically given a list of device types
+# (to identify which files to import), and the list of classes imported with each
+            
 class RDMOperationsView(DeviceOperationsView):
     def __init__(self, device=None, parent=None):
         DeviceOperationsView.__init__(self, device, parent)
@@ -169,6 +215,7 @@ class PRMOperationsView(DeviceOperationsView):
         self.addOperation(PRMXferEluteOperation(self.device))
         self.addOperation(PRMXferHPLCOperation(self.device))
         self.addOperation(PRMAccessOperation(self.device))
+
 
 class UnitOperationControlView(QGroupBox):
     """ Generic view of unit operation (for starting, and param setting)
@@ -197,6 +244,19 @@ class UnitOperationControlView(QGroupBox):
              
 
     def startOperation(self):
-        """ Notify parent view when operation is started
+        """ Notify parent view to start the operation
         """
         self.emit(SIGNAL('startOperation(PyQt_PyObject)'),self.operation)
+
+    def setActive(self, bool=True):
+        if bool:
+            self.setStyleSheet("background-color: yellow")
+        else:
+            self.setStyleSheet('')
+
+    def setSelected(self, bool=True):
+        if bool:
+            self.setStyleSheet("background-color: green")
+        else:
+            self.setStyleSheet('')
+            

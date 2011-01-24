@@ -1,26 +1,26 @@
 
-# TODO: cleanup
-# - redundancy between clearDevices, setActiveDevice etc. in MainWindow,
-#   systemView and operationsView
-# - be careful with parent/child relationships for view elements
+# TODO:
+# - Cleanup: be careful with parent/child relationships for view elements
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from connectionview import SerialConnectionView
-from operationsview import *
-from deviceiconview import *
-from systemstateview import *
-
+from operationsview import OperationsView
+from systemstateview import SystemStateView
         
 class MainWindow(QMainWindow):
+
     """ Main application window
-    @ivar config        obj     Application config info
-    @ivar mojo          obj     Mojo object associated with application
-    @ivar devices       dict    Dictionary of devices in system
-                                (indexed by address)
-    @ivar activeDevice  str     Address of active device (or None)
-    @ivar systemView    obj     Sub-view of system state
-    @ivar operationsView obj    Sub-view of device operations
+    @ivar config            obj     Application config info
+    @ivar mojo              obj     Mojo object associated with application
+    @ivar devices           dict    Dictionary of devices in system
+                                    (indexed by address)
+    @ivar activeDevice      str     Address of active device (or None)
+    @ivar activeOperation   obj     Active operation (or None)
+    @ivar selectedDevice    str     Address of selected device (or None)
+    @ivar status            str     String representing system state
+    @ivar systemView        obj     Sub-view of system state
+    @ivar operationsView    obj     Sub-view of device operations
     """
     
     def __init__(self, mojo=None, config=None, parent=None):
@@ -29,6 +29,9 @@ class MainWindow(QMainWindow):
         self.mojo = mojo
         self.devices = {}
         self.activeDevice = None
+        self.activeOperation = None
+        self.selectedDevice = None
+        self.status = "Ready"
 
         # Dummy widget (required by PyQt)
         centralWidget = QWidget(self)
@@ -44,13 +47,20 @@ class MainWindow(QMainWindow):
         # System state view (containing device icons)
         self.systemView = SystemStateView()
         mainLayout.addWidget(self.systemView)
-        self.connect(self.systemView, SIGNAL("activeDeviceChanged(PyQt_PyObject)"), self.setActiveDevice)
+        self.connect(self.systemView, SIGNAL("deviceSelected(PyQt_PyObject)"), self.setSelectedDevice)
+        self.connect(self, SIGNAL("statusChanged(PyQt_PyObject)"), self.systemView.slotStatusChanged)
         
         # Operations view
         self.operationsView = OperationsView()
         mainLayout.addWidget(self.operationsView)
-        self.connect(self.operationsView, SIGNAL("startOperation(PyQt_PyObject)"), self.startOperation)
+        self.connect(self.operationsView, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
 
+        # Timer to periodically check completion of threads (i.e. for unit operations)
+        self.timer = QTimer(self)
+        self.connect(self.timer, SIGNAL('timeout()'), self.slotCheckThreadCompletion)
+        interval = 0.1 * 1000  # milliseconds
+        self.timer.start(interval)
+        
         # Define Menus
 
         fileMenu = self.menuBar().addMenu("&File")
@@ -58,11 +68,11 @@ class MainWindow(QMainWindow):
         connectionMenu = self.menuBar().addMenu("&Connection")
         helpMenu = self.menuBar().addMenu("&Help")
         
-        # File Menu
+        # File Menu actions
         fileQuitAction = self.createAction("&Quit", self.close, "Ctrl+Q", None, "Close the Application")
         self.addActions(fileMenu, (fileQuitAction,))
         
-        # Connection Menu
+        # Connection Menu actions
         connectionSetupAction = self.createAction("&Setup", self.configureSerial, None, None, "Setup connection ...")
         connectionConnectAction = self.createAction("&Connect", self.connectSerial, None, None, "Connect")
         connectionDisconnectAction = self.createAction("&Disconnect", self.disconnectSerial, None, None, "Disconnect")
@@ -70,11 +80,12 @@ class MainWindow(QMainWindow):
         connectionClearModules = self.createAction("&Clear Modules", self.clearDevices, None, None, "Clear device list")
         self.addActions(connectionMenu,(connectionSetupAction, connectionConnectAction, connectionDisconnectAction, connectionScanModules, connectionClearModules))
         
-        # Help Menu
+        # Help Menu actions
         helpAboutAction = self.createAction("A&bout", self.helpAbout, "Ctrl+~", None, "About ...")
         helpHelpAction = self.createAction("&Help", self.helpHelp, "Ctrl+?", None, "Help ...")
         self.addActions(helpMenu,(helpAboutAction, helpHelpAction))
         
+
     
     def addActions(self, target, actions):
         for action in actions:
@@ -129,7 +140,7 @@ class MainWindow(QMainWindow):
         self.devices = {'a':{'deviceType':'RDM', 'address':'a'}, 'b':{'deviceType':'PRM', 'address':'b'}, 'c':{'deviceType':'PRM', 'address':'c'}}
         self.systemView.loadDevices(self.devices)
         self.operationsView.loadDevices(self.devices)
-                
+
     def clearDevices(self):
         #self.mojo.stopMonitor()
         self.systemView.clearDevices()
@@ -139,32 +150,62 @@ class MainWindow(QMainWindow):
 
     # Signal handlers
     
-    def setActiveDevice(self, address):
-        if self.activeDevice != address:
-            self.activeDevice = address
-            self.systemView.setActiveDevice(address)
-            self.operationsView.setActiveDevice(address)
-        
-    def startOperation(self, operation):
-        self.operationsView.disable()
-        self.operationsView.repaint()   # Seems to be needed
-        operation.execute()
-        # Temporary
-        self.endOperation(operation)
-        # TODO: keep track of running module and operation somewhere?
+    def slotOperationStarted(self, operation):
+        if self.activeOperation != None:
+            # TODO: Raise exception
+            print "ERROR(MainWindow): starting operation while operation is active"
+        self.activeOperation = operation
+        self.activeDevice = operation.device['address']
+        self.systemView.slotOperationStarted(operation)
+        self.operationsView.slotOperationStarted(operation)
 
-    # TODO: needs to be trigger upon completion of MojoOperationManager,
-    # probably by a direct signal/slot connection to operation object.
-    # (sequenceView can also trigger operations).
+    def slotOperationFinished(self, operation):
+        if self.activeOperation != operation:
+            # TODO: Raise exception
+            print "ERROR(MainWindow): finished operation != started operation"
+        self.systemView.slotOperationFinished(operation)
+        self.operationsView.slotOperationFinished(operation)
+        self.activeDevice = None
+        self.activeOperation = None
+
+    def setSelectedDevice(self, address=None):
+        #if self.selectedDevice != address: # Removed to always force redraw
+            self.selectedDevice = address
+            self.systemView.setSelectedDevice(address)
+            self.operationsView.setSelectedDevice(address)
+
+    def slotCheckThreadCompletion(self):
+        if self.activeOperation != None:
+            msg = self.activeOperation.statusMessage
+            # Check for updated status
+            # TODO: think about how to do this with SIGNALs instead?
+            if self.status != msg:
+                self.status = msg
+                self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), self.status)
+            if self.activeOperation.complete:
+                self.endOperation(self.activeOperation)
+        
+    def slotStartOperation(self, operation):
+        """ Begin executing a thread corresponding to a unit operation.
+            Signaled from operationsView or sequenceView
+        """
+        abortInterval = 0.1     # Desired interval (seconds) that operation should check for abort
+        if operation.execute(abortInterval):
+            self.slotOperationStarted(operation)
+
     def endOperation(self, operation):
-        self.operationsView.enable()
+        operation.finish()
+        self.slotOperationFinished(operation)
+        self.status = "Ready"
+        self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), self.status)
+
         
         
 def main():
     app = QApplication(sys.argv)
     app.setOrganizationName("UCLA Crump Institute for Molecular Imaging")
     app.setOrganizationDomain("mednet.ucla.edu")
-    app.setApplicationName("ARC-P Modular Chemistry System")
+    app.setApplicationName("ARC-P Modular Chemistry System Controller")
     form = MainWindow()
     form.show()
     app.exec_() 
