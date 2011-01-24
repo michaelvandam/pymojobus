@@ -1,18 +1,17 @@
+Python
+- upgrade to 3.x?  Apparently pyserial supports this now.  Were there custom mods in
+  pyserial that would have to be redone?
 
 Numpad widget linked to text boxes
 - live in viewutils.py?
 - enable touchscreen-friendly entry of values
 
 Behind the scenes things:
-- Write code for DeviceIcon widgets, that updates based on real state data
+- Write code for DeviceIcon view widgets, that updates based on real state data
   (e.g. using mojodeviceview as an example)
-- Create OperationManagers for each unit operation to carry out sequence
-  of steps for the unit operation
-  - steps include those with immediate response, some need polling for completion,
-    some are fixed time delays, and some require input from user
-- Link OperationManager to MojoTask threads to achieve above
-- Link OperationManager to systemView to show in status bar what is currently
-  happening in the active module
+- Complete MojoUnitOperation threads for all unit operations
+  - Haven't yet through about how to handle when input required from user.  i.e. Need popup
+    window then somehow wait for appropriate button to be pushed
 - Figure out a way to deal with system-config, i.e. order of devices
   (for example, use machine address, 0, 1, 2 instead of mojo addresses
    and have a lookup table)  For create of sequences, this could be useful.
@@ -26,23 +25,18 @@ Cosmetics:
 - Fixed sizes screen areas for icon views and operation views?
 - device icons
 - highlight device icons
-- DeviceOperationsView subclasses needs some organization
+- DeviceOperationsView subclasses needs some improvement (e.g. organization, fixed size, etc)
 
 UI:
-- DeviceOperationsView - need to highlight active operation, and grey out ALL
-  controls while the operationManager runs
-  (switching modules should still be allowed at this point)
 - ConnectionStatusView - show something about the connection at all times
-- SystemStatusView - add a component  to indicate which module is currently running,
-  in addition to which is currently selected
-- MainWindow - need to add notion of an operation in progress.  Disable
-  some menu items as appropriate
+- MainWindow - when operation is in progress, need to disable some menu items
+- MainWindow - Implement view element to trigger 'abort', and call self.activeOperation.abort()
 
 Sequence Handling:
 - MainWindow: add menu operations
   - File|LoadSequence, SaveSequence (and SaveAs), Clear/New Sequence, etc..
 - write SequenceView
-  - view of an entire sequence of unit operatoins
+  - view of an entire sequence of unit operations
   - will be used for editing/creating sequences (e.g. click on blank
     operation slot, select device from the systemView, select operation from
     the operationsView, edit params from the operationsView... also have
@@ -51,6 +45,7 @@ Sequence Handling:
   - will also be used passively to show progress while a sequence is running 
   - active operation (during editing or during running) will be highlighted
 - write UnitOperationSequenceView
+  - e.g. icons along a filmstrip
   - used to represent a single unit operation within a sequence.  Depends
     on device ID, operation name, and a list of param name -> value pairs.
 
