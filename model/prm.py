@@ -51,6 +51,7 @@ class PRM(MojoUpdatingDevice):
         self.addResponseCallback("Transfer", self.transferRespond)
         self.addResponseCallback("Temperature", self.tempRespond)
         self.addResponseCallback("Auxillary", self.auxRespond)
+        self.addResponseCallback("Waste", self.wasteRespond)
         
         self.xState = self.BUSY
         self.zState = self.DOWN
