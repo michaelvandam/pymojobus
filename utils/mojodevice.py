@@ -138,37 +138,38 @@ class MojoDeviceUpdateThread( MojoThread ):
     def __init__(self, device):
         MojoThread.__init__(self)
         self.device=device
-        self.refreshRate=self.device.refreshRate
+        self.refreshRate = 0
         self.setName("UpdateThread %s" % self.device.name)
         log.debug("Initializing Update Thread for %s" % self.device.name)
     
     def run(self):
         log.debug("Starting UpdateThread for %s" % self.device.name)
         while(not self.stop_event.isSet()):
-            time.sleep(self.refreshRate)
+            # Sleep for 1/refreshRate (seconds)
+            time.sleep(1 / self.refreshRate)
             for msg in self.updateMessages:
                 self.device.connection.mojoSend(msg)
         
         self.stop_event.clear()
         log.info("Update %s Thread Shutdown" % self.device.name)
 
-    def start(self, updateMessages):
+    def start(self, refreshRate, updateMessages):
+        self.refreshRate = refreshRate
         self.updateMessages = updateMessages
-        MojoThread.start(self)
+        if refreshRate != 0:
+            MojoThread.start(self)
 
 
 
 class MojoUpdatingDevice(MojoDevice):
     def __init__(self, *args, **kwargs):
         MojoDevice.__init__(self, *args, **kwargs)
-        self.refreshRate = self.config['DeviceSettings']['refreshRate']
-        self.updateMsgs = []
         log.debug("This is an updating device! %s" % self.name)
         
         
-    def startUpdating(self):
+    def startUpdating(self, refreshRate, updateMessages):
         self.updateThread = MojoDeviceUpdateThread(self)
-        self.updateThread.start(self.updateMsgs)
+        self.updateThread.start(refreshRate, updateMessages)
     
     def stopUpdating(self):
         self.updateThread.stop()

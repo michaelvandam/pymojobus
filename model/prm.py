@@ -36,14 +36,8 @@ class PRM(MojoUpdatingDevice):
     MAX = "MAX"
     
     def __init__(self, *args, **kwargs):
+
         MojoUpdatingDevice.__init__(self, *args, **kwargs)
-        updateMsg = MojoSendMessage(MojoAddress(sender=masterAddress, receiver=self.address))
-        updateMsg.addCommand(self.findCommand("MoveX"))
-        updateMsg.addCommand(self.findCommand("MoveZ"))
-        updateMsg.addCommand(self.findCommand("Temperature"))
-        updateMsg.addCommand(self.findCommand("SetPoint"))
-        self.updateMsgs.append(updateMsg)
-        self.startUpdating()
 
         self.addResponseCallback("MoveX", self.moveXRespond)
         self.addResponseCallback("MoveZ", self.moveZRespond)
@@ -63,7 +57,16 @@ class PRM(MojoUpdatingDevice):
         self.auxState = self.OFF
         self.coolState = self.OFF
         self.wasteState = self.ON
-    
+
+        updateMsgs = []
+        updateMsg = MojoSendMessage(MojoAddress(sender=masterAddress, receiver=self.address))
+        updateMsg.addCommand(self.findCommand("MoveX"))
+        updateMsg.addCommand(self.findCommand("MoveZ"))
+        updateMsg.addCommand(self.findCommand("Temperature"))
+        updateMsg.addCommand(self.findCommand("SetPoint"))
+        updateMsgs.append(updateMsg)
+        self.startUpdating(self.config['DeviceSettings']['refreshRate'], updateMsgs)
+        
     def goGetTemp(self):
         cmd = self.findCommand("Temperature")
         self.sendMsg.addCommand(cmd)
