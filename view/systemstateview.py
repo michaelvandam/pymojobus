@@ -2,7 +2,7 @@
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from deviceiconview import *
-from viewutil import *
+from view.util.clickable import *
 
 class SystemStateView(QGroupBox):
 
@@ -46,7 +46,7 @@ class SystemStateView(QGroupBox):
         for address,device in self.devices.items():
             deviceView = DeviceIconViewFactory().getView(device)
             self.deviceViews[address] = deviceView
-            # NOTE: 'clickable' is from viewutil
+            # NOTE: 'clickable' is from view/util
             # Lambda function details here:
             # http://stackoverflow.com/questions/4578861/connecting-slots-and-signals-in-pyqt4-in-a-loop
             clickable(deviceView).connect(lambda address=address: self.slotSelectDevice(address))
