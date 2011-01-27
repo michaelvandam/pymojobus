@@ -26,7 +26,7 @@ import os
 import time
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from model.prm import *
+from view.util.clickable import *
 from operation.unitoperation import UnitOperation
 
 
@@ -55,6 +55,7 @@ class OperationsView(QGroupBox):
         self.activeDevice = None
         self.selectedDevice = None
         self.activeOperation = None
+        self.selectedOperation = None
         self.setTitle("Device Operations")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -86,6 +87,7 @@ class OperationsView(QGroupBox):
             self.views[address] = view
             self.layout.addWidget(view)
             self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
+            self.connect(view, SIGNAL("operationSelected(PyQt_PyObject)"), self.setSelectedOperation)
 
     def setSelectedDevice(self, address):
         old = self.selectedDevice
@@ -103,6 +105,15 @@ class OperationsView(QGroupBox):
                 self.views[new].show()
             self.selectedDevice = address
 
+    def setSelectedOperation(self, operation):
+        old = self.selectedOperation
+        new = operation
+        if old != None:
+            self.views[old.device.address].setSelectedOperation(operation,False)
+        if new != None:
+            self.views[new.device.address].setSelectedOperation(operation,True)
+        self.selectedOperation = operation
+    
     def slotOperationStarted(self, operation):
         if operation != None:
             self.activeOperation = operation
@@ -183,11 +194,22 @@ class DeviceOperationsView(QWidget):
         
     def addOperation(self,operation):
         view = UnitOperationEditView(operation)
-        self.views[id(operation)] = view
+        viewid = id(operation)
+        self.views[viewid] = view
         self.layout.addWidget(view)
         self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
+        clickable(view).connect(lambda operation=operation: self.slotSelectOperation(operation))
 
-    # Signal handlers    
+    # Signal handlers   
+
+    def slotSelectOperation(self, operation):
+        self.emit(SIGNAL('operationSelected(PyQt_PyObject)'), operation)
+    
+    def setSelectedOperation(self, operation, bool):
+        # Note the operation may not be in this particular view
+        if (operation != None) and id(operation) in self.views:
+            self.views[id(operation)].setSelected(bool)
+        
     def slotStartOperation(self, operation):
         """ Notify parent that an operation has been initiated
         """
