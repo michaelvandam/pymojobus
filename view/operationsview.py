@@ -27,7 +27,7 @@ import time
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from model.prm import *
-from operation.prm_operations import *
+from operation.unitoperation import UnitOperation
 
 
 class OperationsView(QGroupBox):
@@ -81,7 +81,7 @@ class OperationsView(QGroupBox):
     def loadDevices(self, devices={}):
         self.devices = devices
         for address,device in self.devices.items():
-            view = DeviceOperationsViewFactory().getView(device)
+            view = DeviceOperationsView(device)
             view.hide()
             self.views[address] = view
             self.layout.addWidget(view)
@@ -106,7 +106,7 @@ class OperationsView(QGroupBox):
     def slotOperationStarted(self, operation):
         if operation != None:
             self.activeOperation = operation
-            self.activeDevice = operation.device['address']
+            self.activeDevice = operation.device.address
             self.views[self.activeDevice].slotOperationStarted(operation)
             self.disable()
 
@@ -147,7 +147,7 @@ class DeviceOperationsViewFactory():
         if device == None:
             return None
             
-        type = device['deviceType']
+        type = device.deviceType
         # TODO: elegant approach not working?  Use if/else
         #view = cls.viewClasses[type](device)
         if type == 'PRM':
@@ -168,15 +168,21 @@ class DeviceOperationsView(QWidget):
     @ivar views     dict    Dictionary of operation views, indexed by object id
     """
     
-    def __init__(self, device=None, parent=None):
+    def __init__(self, device, parent=None):
         QWidget.__init__(self, parent)
         self.device = device
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.views = {}
+        self._populateOperations()
+    
+    def _populateOperations(self):
+        config = self.device.config['UnitOperations']
+        for opname in config.keys():
+            self.addOperation(UnitOperation(self.device, opname))
         
     def addOperation(self,operation):
-        view = UnitOperationControlView(operation)
+        view = UnitOperationEditView(operation)
         self.views[id(operation)] = view
         self.layout.addWidget(view)
         self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
@@ -195,29 +201,8 @@ class DeviceOperationsView(QWidget):
         if id(operation) in self.views:
             self.views[id(operation)].setActive(False)
     
-            
-# TODO: can probably populate these automatically given a list of device types
-# (to identify which files to import), and the list of classes imported with each
-            
-class RDMOperationsView(DeviceOperationsView):
-    def __init__(self, device=None, parent=None):
-        DeviceOperationsView.__init__(self, device, parent)
-
-class PRMOperationsView(DeviceOperationsView):
-    def __init__(self, device=None, parent=None):
-        DeviceOperationsView.__init__(self, device, parent)
-        # TODO: create method to automatically retrieve list from
-        # a config file?
-        self.addOperation(PRMReactOperation(self.device))
-        self.addOperation(PRMEvapOperation(self.device))
-        self.addOperation(PRMReagentOperation(self.device))
-        self.addOperation(PRMXferTrapOperation(self.device))
-        self.addOperation(PRMXferEluteOperation(self.device))
-        self.addOperation(PRMXferHPLCOperation(self.device))
-        self.addOperation(PRMAccessOperation(self.device))
-
-
-class UnitOperationControlView(QGroupBox):
+ 
+class UnitOperationEditView(QGroupBox):
     """ Generic view of unit operation (for starting, and param setting)
     @ivar operation     obj     Unit operation attached to this view
     """
@@ -232,15 +217,17 @@ class UnitOperationControlView(QGroupBox):
         layout.addLayout(paramLayout)
         layout.addWidget(goButton)
         self.connect(goButton, SIGNAL('clicked()'), self.startOperation)
-        self.setTitle(operation.label)
+        self.setTitle(operation.getLabel())
         
-        for name,param in operation.params.items():
+        params = operation.getParams()
+        config = operation.config['Params']
+        for name in operation.params.keys():
             # TODO: replace QSpinBox with Kevin's numpad code
             widget = QSpinBox()
-            widget.setValue(param['value'])
-            widget.setMinimum(param['min'])
-            widget.setMaximum(param['max'])
-            paramLayout.addRow(QLabel(param['label']), widget)
+            widget.setValue(params[name])
+            widget.setMinimum(config[name]['min'])
+            widget.setMaximum(config[name]['max'])
+            paramLayout.addRow(QLabel(operation.getLabel()), widget)
              
 
     def startOperation(self):
