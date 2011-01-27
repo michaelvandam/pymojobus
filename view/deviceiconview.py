@@ -13,7 +13,7 @@ class DeviceIconViewFactory():
     
     @classmethod
     def getView (cls, device):
-        type = device['deviceType']
+        type = device.deviceType
         # TODO: elegant approach not working?  Go with if/else
         #view = cls.viewClasses[type](device)
         if type == 'PRM':
@@ -39,11 +39,11 @@ class DeviceIconView(QGroupBox):
     def __init__(self, device, parent=None):
         QGroupBox.__init__(self)
         self.device = device
-        self.address = device['address']
+        self.address = device.address
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.addWidget(QLabel("Address: %s" % self.address))
-        self.layout.addWidget(QLabel("Type: %s" % self.device['deviceType']))
+        self.layout.addWidget(QLabel("Type: %s" % self.device.deviceType))
         self.isActive = False
         self.isSelected = False
 

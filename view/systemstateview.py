@@ -73,7 +73,7 @@ class SystemStateView(QGroupBox):
             
     def slotOperationStarted(self, operation):
         self.activeOperation = operation
-        self.activeDevice = operation.device['address']
+        self.activeDevice = operation.device.address
         self.deviceViews[self.activeDevice].setActive(True)
     
     def slotOperationFinished(self, operation):

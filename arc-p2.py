@@ -15,7 +15,9 @@ import sys
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from view.mainview import MainWindow
+from utils.mojoconfig import *
 from mojo import Mojo
+from mock_mojo import MockMojo
 
 def main():
     app = QApplication(sys.argv)
@@ -24,7 +26,8 @@ def main():
     app.setApplicationName("ARC-P Modular Chemistry System Controller")
     app.setApplicationVersion("2.0 'Elixys'")
     #turnRecordingOn()
-    mojo = Mojo()
+    # mojo = Mojo()
+    mojo = MockMojo(config)
     form = MainWindow(mojo=mojo, config=mojo.config)
     form.show()
     app.exec_() 

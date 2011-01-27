@@ -135,9 +135,7 @@ class MainWindow(QMainWindow):
     def scanDevices(self):
         self.clearDevices()
         # Query for devices
-        # Tempory Disable:
-        # self.devices = self.mojo.getDevices()
-        self.devices = {'a':{'deviceType':'RDM', 'address':'a'}, 'b':{'deviceType':'PRM', 'address':'b'}, 'c':{'deviceType':'PRM', 'address':'c'}}
+        self.devices = self.mojo.getDevices()
         self.systemView.loadDevices(self.devices)
         self.operationsView.loadDevices(self.devices)
 
@@ -155,7 +153,7 @@ class MainWindow(QMainWindow):
             # TODO: Raise exception
             print "ERROR(MainWindow): starting operation while operation is active"
         self.activeOperation = operation
-        self.activeDevice = operation.device['address']
+        self.activeDevice = operation.device.address
         self.systemView.slotOperationStarted(operation)
         self.operationsView.slotOperationStarted(operation)
 
