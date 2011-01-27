@@ -31,7 +31,7 @@ class Mojo(object):
         self.getDeviceFactory()
         self.devices = self.deviceFactory.enumerateDevices()
         self.conn.startMonitor(self.devices)
-    
+        
     def dropDevices(self):
         self.devices
 
@@ -45,6 +45,10 @@ class Mojo(object):
             except AttributeError:
                 pass
             
+    def shutdown(self):
+        self.stopDeviceUpdating()
+        self.stopMonitor()
+        self.conn.close()
     
 def main():
     pass

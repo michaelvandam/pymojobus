@@ -31,6 +31,7 @@ def main():
     form = MainWindow(mojo=mojo, config=mojo.config)
     form.show()
     app.exec_() 
+    mojo.shutdown()
     return form
 
 
