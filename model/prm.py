@@ -46,17 +46,19 @@ class PRM(MojoUpdatingDevice):
         self.addResponseCallback("Temperature", self.tempRespond)
         self.addResponseCallback("Auxillary", self.auxRespond)
         self.addResponseCallback("Waste", self.wasteRespond)
-        
+        self.addResponseCallback("SetPoint", self.setpointRespond)
+        self.addResponseCallback("HeaterControl", self.heaterRespond)
+     
+        # Initial states (power-on configuration of device)
         self.xState = self.BUSY
         self.zState = self.DOWN
         self.coolState = self.OFF
         self.transferState = self.OFF
+        self.auxState = self.OFF
+        self.wasteState = self.ON
         self.reactorTemperature = 0
         self.reactorSetpoint = 0
-        self.transferState = self.OFF
-        self.auxState = self.OFF
-        self.coolState = self.OFF
-        self.wasteState = self.ON
+        self.heaterState = self.OFF
 
         updateMsgs = []
         updateMsg = MojoSendMessage(MojoAddress(sender=masterAddress, receiver=self.address))
@@ -82,7 +84,7 @@ class PRM(MojoUpdatingDevice):
         self.goCommand("HeaterControl", self.OFF)
     
     def goSetpoint(self, setpoint):
-        self.reactorSetpoint = setpoint
+        #self.reactorSetpoint = setpoint
         val = str(setpoint)
         self.goCommand("SetPoint", val)
     
@@ -210,3 +212,23 @@ class PRM(MojoUpdatingDevice):
             
         except ValueError:
             log.error("Invalid temperature" % param)
+            
+    def setpointRespond(self, param):
+        try:
+            self.reactorSetpoint = float(param)
+            
+        except ValueError:
+            log.error("Invalid setpoint" % param)
+            
+    def heaterRespond(self, param):
+        if param == self.ON:
+            self.heaterState = self.ON
+            log.debug("%s Heater %s" % (str(self), self.heaterState))
+        elif param == self.OFF:
+            self.heaterState = self.OFF
+            log.debug("%s Heater %s" % (str(self), self.heaterState))
+        elif param == self.MAX:
+            self.heaterState = self.MAX
+            log.debug("%s Heater %s" % (str(self), self.heaterState))
+        else:
+            self.heaterState=self.ERR    
