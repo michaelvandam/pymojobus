@@ -249,7 +249,7 @@ class UnitOperationEditView(QGroupBox):
             widget.setValue(params[name])
             widget.setMinimum(config[name]['min'])
             widget.setMaximum(config[name]['max'])
-            paramLayout.addRow(QLabel(operation.getLabel()), widget)
+            paramLayout.addRow(QLabel(config[name]['label']), widget)
              
 
     def startOperation(self):
