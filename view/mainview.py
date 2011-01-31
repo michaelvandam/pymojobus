@@ -8,6 +8,8 @@ from connectionview import SerialConnectionView
 from operationsview import OperationsView
 from systemstateview import SystemStateView
         
+from operation.unitoperation import WrapperThread
+
 class MainWindow(QMainWindow):
 
     """ Main application window
@@ -21,6 +23,9 @@ class MainWindow(QMainWindow):
     @ivar status            str     String representing system state
     @ivar systemView        obj     Sub-view of system state
     @ivar operationsView    obj     Sub-view of device operations
+    @ivar workerThread      obj     Thread to manage a unit operation
+    @ivar worker            obj     Object that actually performs the unit operation
+    @ivar threadRunning     bool    True if unit operation thread is running
     """
     
     def __init__(self, mojo=None, config=None, parent=None):
@@ -50,17 +55,18 @@ class MainWindow(QMainWindow):
         self.connect(self.systemView, SIGNAL("deviceSelected(PyQt_PyObject)"), self.setSelectedDevice)
         self.connect(self, SIGNAL("statusChanged(PyQt_PyObject)"), self.systemView.slotStatusChanged)
         
+        # Abort button
+        # Keep disabled unless inside a unit operation
+        self.abortButton = QPushButton("Abort")
+        self.abortButton.setEnabled(False)
+        mainLayout.addWidget(self.abortButton)
+        self.connect(self.abortButton, SIGNAL("clicked()"), self._slotAbortThread)
+        
         # Operations view
         self.operationsView = OperationsView()
         mainLayout.addWidget(self.operationsView)
         self.connect(self.operationsView, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
 
-        # Timer to periodically check completion of threads (i.e. for unit operations)
-        self.timer = QTimer(self)
-        self.connect(self.timer, SIGNAL('timeout()'), self.slotCheckThreadCompletion)
-        interval = 0.1 * 1000  # milliseconds
-        self.timer.start(interval)
-        
         # Define Menus
 
         fileMenu = self.menuBar().addMenu("&File")
@@ -152,6 +158,7 @@ class MainWindow(QMainWindow):
         if self.activeOperation != None:
             # TODO: Raise exception
             print "ERROR(MainWindow): starting operation while operation is active"
+        self.abortButton.setEnabled(True)
         self.activeOperation = operation
         self.activeDevice = operation.device.address
         self.systemView.slotOperationStarted(operation)
@@ -161,6 +168,7 @@ class MainWindow(QMainWindow):
         if self.activeOperation != operation:
             # TODO: Raise exception
             print "ERROR(MainWindow): finished operation != started operation"
+        self.abortButton.setEnabled(False)
         self.systemView.slotOperationFinished(operation)
         self.operationsView.slotOperationFinished(operation)
         self.activeDevice = None
@@ -172,32 +180,71 @@ class MainWindow(QMainWindow):
             self.systemView.setSelectedDevice(address)
             self.operationsView.setSelectedDevice(address)
 
-    def slotCheckThreadCompletion(self):
-        if self.activeOperation != None:
-            msg = self.activeOperation.statusMessage
-            # Check for updated status
-            # TODO: think about how to do this with SIGNALs instead?
-            if self.status != msg:
-                self.status = msg
-                self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), self.status)
-            if self.activeOperation.complete:
-                self.endOperation(self.activeOperation)
+    def _slotAbortThread(self):
+        if self.threadRunning:
+            print "MainWindow: sending ABORT signal"
+            self.emit(SIGNAL('abortRequest()'))
+                
+    def slotAbortAck(self):
+        """ Public slot for signal from thread acknowledging ready to abort.
+            When received, terminate thread.  Cleanup of GUI occurs when thread
+            emits 'terminated()' signal.
+            """
+        self.workerThread.terminate()
         
     def slotStartOperation(self, operation):
         """ Begin executing a thread corresponding to a unit operation.
             Signaled from operationsView or sequenceView
         """
-        abortInterval = 0.1     # Desired interval (seconds) that operation should check for abort
-        if operation.execute(abortInterval):
-            self.slotOperationStarted(operation)
+        self.slotOperationStarted(operation)
+        pollInterval = 100     # Desired interval (msec) that operation should check for abort
+        self.worker = operation.getThread(pollInterval)
+        self.workerThread = WrapperThread()
+        self.worker.moveToThread(self.workerThread)
+        # Connect thread-level signals and slots
+        self.workerThread.started.connect(self.worker.run)
+        self.workerThread.finished.connect(self.slotThreadFinished)
+        self.workerThread.terminated.connect(self.slotThreadTerminated)  # seems unneeded; finished() also called on termination
+        # Connect worker-level signals and slots
+        self.worker.connect(self.worker, SIGNAL('status(PyQt_PyObject)'), self.slotThreadStatusChanged)
+        self.worker.connect(self.worker, SIGNAL('requestInput(PyQt_PyObject)'), self.slotThreadInputRequest)
+        self.worker.connect(self, SIGNAL('abortRequest()'), self.worker.slotAbort)
+        self.worker.connect(self.worker, SIGNAL('abortAck()'), self.slotAbortAck)
+        self.worker.connect(self, SIGNAL('inputReceived()'), self.worker.slotInputReceived)
+        self.threadRunning = True
+        self.workerThread.start()
 
-    def endOperation(self, operation):
-        operation.finish()
-        self.slotOperationFinished(operation)
+    def slotThreadInputRequest(self, message):
+        print "MainWindow: INPUTREQUEST"
+        self.popup = QMessageBox()
+        self.popup.setWindowTitle("ARC-P Modular Chemistry System Controller")
+        self.popup.setText(message + "  Press OK to continue.")
+        self.popup.connect(self.popup, SIGNAL('finished(int)'), self._slotPopupClosed)
+        self.popup.show()
+
+    def _slotPopupClosed(self, returnval):
+        # Send signal to the thread that input was received
+        # TODO: we may want to send data with this signal in the general case
+        self.emit(SIGNAL('inputReceived()'))
+    
+    def slotThreadStatusChanged(self, message):
+        self.status = message
+        self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), message)
+    
+    def slotThreadFinished(self):
+        if self.threadRunning: # prevent duplicate call (finished() emitted after terminated())
+            self.threadRunning = False
+            self.workerThread.wait()
+            self.status = "Ready"
+            self.slotOperationFinished(self.activeOperation)
+            self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), self.status)
+
+    def slotThreadTerminated(self):
+        # Same as slotThreadFinished, except no call to QThread.wait() (hangs after terminate())
+        self.threadRunning = False
         self.status = "Ready"
+        self.slotOperationFinished(self.activeOperation)
         self.emit(SIGNAL('statusChanged(PyQt_PyObject)'), self.status)
-
-        
         
 def main():
     app = QApplication(sys.argv)

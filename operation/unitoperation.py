@@ -1,4 +1,6 @@
 
+from PyQt4.QtCore import *
+
 from operation.unitoperationthreadfactory import UnitOperationThreadFactory
 
 class UnitOperation():
@@ -10,11 +12,6 @@ class UnitOperation():
     @ivar params        dict    Dictionary of parameter values (indexed by param name)
     @ivar config        dict    Dictionary of config information about unit operation
                                 (e.g. ['Params'] gives meta information about parameters)
-
-    #TOREMOVE:                         
-    @ivar complete      bool    Flag set by thread to indicate completion
-    @ivar statusMessage str     Status message updated by thread
-
     """
 
     def __init__(self, device, opname, params=None):
@@ -27,10 +24,6 @@ class UnitOperation():
         else:
             self.params = params
 
-        #TOREMOVE: 
-        self.complete = False
-        self.statusMessage = ''
-
     def getLabel(self):
         return self.config['label']
         
@@ -41,7 +34,13 @@ class UnitOperation():
         self.params = params
         
     def getParam(self, name):
-        return self.params[name]
+        if name in self.params:
+            return self.params[name]
+        else:
+            if self.config['Params'][name]['type'] == 'string':
+                return self.config['Params'][name]['default_string']
+            else:
+                return self.config['Params'][name]['default_value']
         
     def setParam(self, name, value):
         self.params[name] = value
@@ -49,28 +48,21 @@ class UnitOperation():
     def setDefaultParams(self):
         self.params = {}
         for name,meta in self.config['Params'].items():
-            self.params[name] = meta['default']
-            
-    def _startThread(self, abortInterval):
-        thread = UnitOperationThreadFactory.getThread(self.device, self, abortInterval)
-        thread.start()
-        # TODO: change to actually reflect thread creation/start status
-        return True
+            if meta['type'] == 'string':
+                self.params[name] = meta['default_string']
+            else:
+                self.params[name] = meta['default_value']
     
-    def abort(self):
-        pass
-        # TODO: need to keep track of the thread object so we can call thread.abort()
+    def getThread(self, abortInterval):
+        thread = UnitOperationThreadFactory.getThread(self.device, self, abortInterval)
+        return thread
 
-    def execute(self, abortInterval):
-        """ Execute the unit operation
-        @param abortInterval    float   Desired interval (in seconds) for abort checking
-        """
-        self.complete = False
-        if self._startThread(abortInterval):
-            self.isRunning = True
-            return True
-        return False
+        
+class WrapperThread(QThread):
+    """ Wrapper thread from unit operation threads.  See comments in unitoperationqthread.py
+    """
+    def __init__(self):
+        super(WrapperThread, self).__init__()
 
-    def finish(self):
-        self.isRunning = False
-
+    def run(self):
+        self.exec_()

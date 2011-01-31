@@ -140,36 +140,7 @@ class EmptyOperationsView(QLabel):
     def __init__(self, parent=None):
         QLabel.__init__(self, parent)
         self.setText("No active device selected")
-        
 
-class DeviceOperationsViewFactory():
-    """ Factory class for DeviceOperationsView subclasses.
-    @cvar viewClasses   dict    Dictionary of class names
-                                (indexed by device type)
-    """
-
-    viewClasses = {'PRM':'PRMOperationsView', 'RDM':'RDMOperationsView', }
-
-    @classmethod
-    def getView (cls, device=None):
-        """ Return an instance of a DeviceOperationsView subclass corresponding to device
-        """
-        
-        if device == None:
-            return None
-            
-        type = device.deviceType
-        # TODO: elegant approach not working?  Use if/else
-        #view = cls.viewClasses[type](device)
-        if type == 'PRM':
-            return PRMOperationsView(device)
-        elif type == 'RDM':
-            return RDMOperationsView(device)
-        else:
-            # TODO: Unknown view, raise exception
-            return None
-            
-        return view
 
 class DeviceOperationsView(QWidget):
 
@@ -190,12 +161,11 @@ class DeviceOperationsView(QWidget):
     def _populateOperations(self):
         config = self.device.config['UnitOperations']
         for opname in config.keys():
-            self.addOperation(UnitOperation(self.device, opname))
+            self._addOperation(UnitOperation(self.device, opname))
         
-    def addOperation(self,operation):
+    def _addOperation(self,operation):
         view = UnitOperationEditView(operation)
-        viewid = id(operation)
-        self.views[viewid] = view
+        self.views[operation.name] = view
         self.layout.addWidget(view)
         self.connect(view, SIGNAL("startOperation(PyQt_PyObject)"), self.slotStartOperation)
         clickable(view).connect(lambda operation=operation: self.slotSelectOperation(operation))
@@ -207,8 +177,8 @@ class DeviceOperationsView(QWidget):
     
     def setSelectedOperation(self, operation, bool):
         # Note the operation may not be in this particular view
-        if (operation != None) and id(operation) in self.views:
-            self.views[id(operation)].setSelected(bool)
+        if (operation != None) and operation.name in self.views:
+            self.views[operation.name].setSelected(bool)
         
     def slotStartOperation(self, operation):
         """ Notify parent that an operation has been initiated
@@ -216,12 +186,12 @@ class DeviceOperationsView(QWidget):
         self.emit(SIGNAL("startOperation(PyQt_PyObject)"), operation)
 
     def slotOperationStarted(self, operation):
-        if id(operation) in self.views:
-            self.views[id(operation)].setActive(True)
+        if operation.name in self.views:
+            self.views[operation.name].setActive(True)
             
     def slotOperationFinished(self, operation):
-        if id(operation) in self.views:
-            self.views[id(operation)].setActive(False)
+        if operation.name in self.views:
+            self.views[operation.name].setActive(False)
     
  
 class UnitOperationEditView(QGroupBox):
@@ -244,16 +214,23 @@ class UnitOperationEditView(QGroupBox):
         params = operation.getParams()
         config = operation.config['Params']
         for name in operation.params.keys():
-            # TODO: replace QSpinBox with Kevin's numpad code
-            widget = QSpinBox()
-            widget.setValue(params[name])
-            widget.setMinimum(config[name]['min'])
-            widget.setMaximum(config[name]['max'])
+            if config[name]['type'] == "string":
+                widget = QLineEdit()
+                widget.setText(params[name])
+            else:
+                # TODO: replace QSpinBox with Kevin's numpad code
+                widget = QSpinBox()
+                widget.setValue(params[name])
+                widget.setMinimum(config[name]['min_value'])
+                widget.setMaximum(config[name]['max_value'])
             paramLayout.addRow(QLabel(config[name]['label']), widget)
              
 
+    # TODO: need to implement capturing of the data into the self.operation
+    # How to do this?  Use 'Qt.AcceptRole' buttons?
     def startOperation(self):
-        """ Notify parent view to start the operation
+        """ Capture all the data the user has entered and
+            notify parent view to start the operation.
         """
         self.emit(SIGNAL('startOperation(PyQt_PyObject)'),self.operation)
 
